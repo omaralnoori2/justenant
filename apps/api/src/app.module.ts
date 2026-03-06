@@ -7,6 +7,7 @@ import { UsersModule } from './users/users.module';
 import { CmtModule } from './cmt/cmt.module';
 import { TenantModule } from './tenant/tenant.module';
 import { LandlordModule } from './landlord/landlord.module';
+import { ServiceProviderModule } from './service-provider/service-provider.module';
 import { PortalTeamModule } from './portal-team/portal-team.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
 
@@ -20,6 +21,7 @@ import { SuperAdminModule } from './super-admin/super-admin.module';
     CmtModule,
     TenantModule,
     LandlordModule,
+    ServiceProviderModule,
     PortalTeamModule,
     SuperAdminModule,
   ],
