@@ -19,8 +19,7 @@ interface CmtDetail {
 }
 
 export default function CmtDetailPage() {
-  const params = useParams();
-  const id = params.id as string;
+  const id = (useParams()?.id ?? '') as string;
   const router = useRouter();
   const [cmt, setCmt] = useState<CmtDetail | null>(null);
   const [tiers, setTiers] = useState<SubscriptionTier[]>([]);
