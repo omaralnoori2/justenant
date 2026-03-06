@@ -5,6 +5,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { CmtModule } from './cmt/cmt.module';
+import { TenantModule } from './tenant/tenant.module';
 import { PortalTeamModule } from './portal-team/portal-team.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
 
@@ -16,6 +17,7 @@ import { SuperAdminModule } from './super-admin/super-admin.module';
     AuthModule,
     UsersModule,
     CmtModule,
+    TenantModule,
     PortalTeamModule,
     SuperAdminModule,
   ],
