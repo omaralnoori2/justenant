@@ -14,6 +14,8 @@ COPY . .
 
 RUN npx prisma generate
 RUN npm run build
+RUN echo "=== DIST CONTENTS ===" && ls -la /app/dist/ 2>&1 || echo "=== DIST NOT FOUND ==="
+RUN echo "=== APP ROOT ===" && ls -la /app/ 2>&1
 
 ENV NODE_ENV=production
 EXPOSE 3001
