@@ -25,6 +25,7 @@ export class PropertiesService {
       data: {
         name: data.name,
         address: data.address,
+        type: 'TOWER',
         cmtId,
         landlordId: data.landlordId,
       },
@@ -76,7 +77,13 @@ export class PropertiesService {
       throw new Error('Property not found or access denied');
     }
 
-    const units = [];
+    interface UnitData {
+      propertyId: string;
+      name: string;
+      floor?: number;
+      unitNumber?: number;
+    }
+    const units: UnitData[] = [];
 
     if (config.mode === 'tower') {
       const towers = config.towers || 1;
