@@ -51,4 +51,9 @@ export class CmtController {
   ) {
     return this.cmtService.rejectUser(user.id, targetId, reason);
   }
+
+  @Get('test-deploy')
+  testDeploy() {
+    return { message: 'Deployment test successful', timestamp: new Date() };
+  }
 }
