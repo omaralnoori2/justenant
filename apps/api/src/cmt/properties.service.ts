@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface CreatePropertyDto {
@@ -20,7 +20,17 @@ export interface BulkGenerateUnitsDto {
 export class PropertiesService {
   constructor(private prisma: PrismaService) {}
 
-  async createProperty(cmtId: string, data: CreatePropertyDto) {
+  private async getCmtIdByUserId(userId: string): Promise<string> {
+    const cmt = await this.prisma.cmtProfile.findUnique({
+      where: { userId },
+    });
+    if (!cmt) throw new NotFoundException('CMT profile not found');
+    if (cmt.status !== 'APPROVED') throw new ForbiddenException('CMT account is not approved');
+    return cmt.id;
+  }
+
+  async createProperty(userId: string, data: CreatePropertyDto) {
+    const cmtId = await this.getCmtIdByUserId(userId);
     return this.prisma.property.create({
       data: {
         name: data.name,
@@ -32,21 +42,32 @@ export class PropertiesService {
     });
   }
 
-  async getProperties(cmtId: string) {
+  async getProperties(userId: string) {
+    const cmtId = await this.getCmtIdByUserId(userId);
     return this.prisma.property.findMany({
       where: { cmtId },
       include: { units: true, landlord: true },
     });
   }
 
-  async getProperty(id: string, cmtId: string) {
-    return this.prisma.property.findUnique({
+  async getProperty(id: string, userId: string) {
+    const cmtId = await this.getCmtIdByUserId(userId);
+    const property = await this.prisma.property.findUnique({
       where: { id },
       include: { units: true, landlord: true },
     });
+    if (!property || property.cmtId !== cmtId) {
+      throw new ForbiddenException('Property not found or access denied');
+    }
+    return property;
   }
 
-  async updateProperty(id: string, cmtId: string, data: Partial<CreatePropertyDto>) {
+  async updateProperty(id: string, userId: string, data: Partial<CreatePropertyDto>) {
+    const cmtId = await this.getCmtIdByUserId(userId);
+    const property = await this.prisma.property.findUnique({ where: { id } });
+    if (!property || property.cmtId !== cmtId) {
+      throw new ForbiddenException('Property not found or access denied');
+    }
     return this.prisma.property.update({
       where: { id },
       data: {
@@ -58,7 +79,12 @@ export class PropertiesService {
     });
   }
 
-  async deleteProperty(id: string, cmtId: string) {
+  async deleteProperty(id: string, userId: string) {
+    const cmtId = await this.getCmtIdByUserId(userId);
+    const property = await this.prisma.property.findUnique({ where: { id } });
+    if (!property || property.cmtId !== cmtId) {
+      throw new ForbiddenException('Property not found or access denied');
+    }
     return this.prisma.property.delete({
       where: { id },
     });
@@ -66,15 +92,16 @@ export class PropertiesService {
 
   async generateUnitsForProperty(
     propertyId: string,
-    cmtId: string,
+    userId: string,
     config: BulkGenerateUnitsDto,
   ) {
+    const cmtId = await this.getCmtIdByUserId(userId);
     const property = await this.prisma.property.findUnique({
       where: { id: propertyId },
     });
 
     if (!property || property.cmtId !== cmtId) {
-      throw new Error('Property not found or access denied');
+      throw new ForbiddenException('Property not found or access denied');
     }
 
     interface UnitData {
@@ -117,18 +144,18 @@ export class PropertiesService {
     });
   }
 
-  async getUnits(propertyId: string, cmtId: string) {
+  async getUnits(propertyId: string, userId: string) {
     // Verify access
-    await this.getProperty(propertyId, cmtId);
+    await this.getProperty(propertyId, userId);
 
     return this.prisma.unit.findMany({
       where: { propertyId },
     });
   }
 
-  async updateUnitName(propertyId: string, unitId: string, cmtId: string, name: string) {
+  async updateUnitName(propertyId: string, unitId: string, userId: string, name: string) {
     // Verify access
-    await this.getProperty(propertyId, cmtId);
+    await this.getProperty(propertyId, userId);
 
     return this.prisma.unit.update({
       where: { id: unitId },
