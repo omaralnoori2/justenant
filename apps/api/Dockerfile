@@ -31,4 +31,4 @@ COPY prisma ./prisma/
 EXPOSE 3001
 
 # Run migrations then start
-CMD ["sh", "-c", "until npx prisma migrate deploy; do echo 'Waiting for DB...'; sleep 3; done && node dist/main"]
+CMD ["sh", "-c", "until npx prisma db push --skip-generate --accept-data-loss; do echo 'Waiting for DB...'; sleep 3; done && node dist/main"]
