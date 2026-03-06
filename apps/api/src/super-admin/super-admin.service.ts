@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -89,5 +90,52 @@ export class SuperAdminService {
         status: 'ACTIVE',
       },
     });
+  }
+
+  async createCmtAccount(data: {
+    email: string;
+    password: string;
+    businessName: string;
+    businessAddress: string;
+    contactPhone: string;
+    licenseNumber?: string;
+  }) {
+    // Check if email already exists
+    const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+    if (existing) throw new ConflictException('Email already registered');
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(data.password, 10);
+
+    // Create user with CMT profile - APPROVED status ready to use
+    const user = await this.prisma.user.create({
+      data: {
+        email: data.email,
+        passwordHash,
+        role: 'CMT',
+        status: 'ACTIVE',
+        cmtProfile: {
+          create: {
+            businessName: data.businessName,
+            businessAddress: data.businessAddress,
+            contactPhone: data.contactPhone,
+            licenseNumber: data.licenseNumber,
+            status: 'APPROVED', // Automatically approved when created by Super Admin
+          },
+        },
+      },
+      include: { cmtProfile: true },
+    });
+
+    return {
+      message: 'CMT account created successfully and is ready to use',
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        cmtProfile: user.cmtProfile,
+      },
+    };
   }
 }
