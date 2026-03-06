@@ -30,5 +30,5 @@ COPY prisma ./prisma/
 
 EXPOSE 3001
 
-# Apply schema then start (prisma is in production deps so .bin/prisma exists)
-CMD ["sh", "-c", "until npx prisma db push --skip-generate --accept-data-loss; do echo 'Waiting for DB...'; sleep 3; done && node dist/main"]
+# Apply schema then start; on crash keep container alive for log inspection
+CMD ["sh", "-c", "echo '=== DB PUSH ===' && npx prisma db push --skip-generate --accept-data-loss 2>&1 && echo '=== STARTING NODE ===' && node dist/main 2>&1; echo '=== NODE EXITED WITH '$?' ==='; tail -f /dev/null"]
