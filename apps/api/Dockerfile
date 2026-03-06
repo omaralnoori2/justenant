@@ -26,9 +26,10 @@ RUN npm install --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY prisma ./prisma/
 
 EXPOSE 3001
 
-# Run migrations then start
-CMD ["sh", "-c", "until npx prisma db push --skip-generate --accept-data-loss; do echo 'Waiting for DB...'; sleep 3; done && node dist/main"]
+# Run schema push then start (prisma copied from builder so CLI is available)
+CMD ["sh", "-c", "until node_modules/.bin/prisma db push --skip-generate --accept-data-loss 2>&1; do echo 'Waiting for DB...'; sleep 3; done && node dist/main"]
