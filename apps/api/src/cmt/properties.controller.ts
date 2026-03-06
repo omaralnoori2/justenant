@@ -1,9 +1,13 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../common/enums/role.enum';
 import { PropertiesService, CreatePropertyDto, BulkGenerateUnitsDto } from './properties.service';
 
 @Controller('cmt/properties')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.CMT)
 export class PropertiesController {
   constructor(private propertiesService: PropertiesService) {}
 
