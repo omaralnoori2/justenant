@@ -20,4 +20,4 @@ RUN echo "=== APP ROOT ===" && ls -la /app/ 2>&1
 ENV NODE_ENV=production
 EXPOSE 3001
 
-CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss 2>&1 && echo '=== STARTING ===' && node dist/main 2>&1; echo '=== EXIT '$?' ==='; tail -f /dev/null"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss 2>&1 && npx ts-node --transpile-only prisma/seed.ts 2>&1 && echo '=== STARTING ===' && node dist/main 2>&1; echo '=== EXIT '$?' ==='; tail -f /dev/null"]
