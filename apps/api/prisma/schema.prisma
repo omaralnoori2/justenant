@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  PORTAL_TEAM
+  CMT
+  LANDLORD
+  TENANT
+  SERVICE_PROVIDER
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum CmtStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum PropertyType {
+  TOWER
+  VILLA
+}
+
+enum MaintenanceStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+// ─── Core Auth ───────────────────────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  role         Role
+  status       UserStatus @default(PENDING)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  cmtProfile      CmtProfile?
+  landlordProfile LandlordProfile?
+  tenantProfile   TenantProfile?
+  spProfile       ServiceProviderProfile?
+  refreshTokens   RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// ─── Subscription ─────────────────────────────────────────────────────────────
+
+model SubscriptionTier {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  maxTenants    Int
+  maxProperties Int
+  pricePerMonth Decimal  @db.Decimal(10, 2)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  cmtProfiles         CmtProfile[]
+  subscriptionRecords CmtSubscription[]
+}
+
+model CmtSubscription {
+  id         String          @id @default(cuid())
+  cmtId      String
+  cmt        CmtProfile      @relation(fields: [cmtId], references: [id])
+  tierId     String
+  tier       SubscriptionTier @relation(fields: [tierId], references: [id])
+  status     PaymentStatus   @default(PENDING)
+  startDate  DateTime
+  endDate    DateTime?
+  paidAt     DateTime?
+  createdAt  DateTime        @default(now())
+}
+
+// ─── CMT ──────────────────────────────────────────────────────────────────────
+
+model CmtProfile {
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName       String
+  businessAddress    String
+  contactPhone       String
+  licenseNumber      String?
+  status             CmtStatus @default(PENDING)
+  rejectionReason    String?
+  subscriptionTierId String?
+  subscriptionTier   SubscriptionTier? @relation(fields: [subscriptionTierId], references: [id])
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  properties        Property[]
+  landlords         LandlordProfile[]
+  tenants           TenantProfile[]
+  serviceProviders  ServiceProviderProfile[]
+  subscriptions     CmtSubscription[]
+}
+
+// ─── Landlord ─────────────────────────────────────────────────────────────────
+
+model LandlordProfile {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cmtId     String
+  cmt       CmtProfile @relation(fields: [cmtId], references: [id])
+  firstName String
+  lastName  String
+  phone     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  properties Property[]
+}
+
+// ─── Tenant ───────────────────────────────────────────────────────────────────
+
+model TenantProfile {
+  id         String     @id @default(cuid())
+  userId     String     @unique
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cmtId      String
+  cmt        CmtProfile @relation(fields: [cmtId], references: [id])
+  firstName  String
+  lastName   String
+  phone      String?
+  leaseStart DateTime?
+  leaseEnd   DateTime?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  unit                Unit?
+  maintenanceRequests MaintenanceRequest[]
+}
+
+// ─── Service Provider ─────────────────────────────────────────────────────────
+
+model ServiceProviderProfile {
+  id             String     @id @default(cuid())
+  userId         String     @unique
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cmtId          String
+  cmt            CmtProfile @relation(fields: [cmtId], references: [id])
+  firstName      String
+  lastName       String
+  phone          String?
+  serviceType    String
+  certifications String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  maintenanceTasks MaintenanceRequest[]
+}
+
+// ─── Properties & Units ───────────────────────────────────────────────────────
+
+model Property {
+  id         String       @id @default(cuid())
+  cmtId      String
+  cmt        CmtProfile   @relation(fields: [cmtId], references: [id])
+  landlordId String?
+  landlord   LandlordProfile? @relation(fields: [landlordId], references: [id])
+  name       String
+  address    String
+  type       PropertyType
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  units Unit[]
+}
+
+model Unit {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name       String
+  floor      Int?
+  unitNumber Int?
+  isOccupied Boolean  @default(false)
+  tenantId   String?  @unique
+  tenant     TenantProfile? @relation(fields: [tenantId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ─── Maintenance ──────────────────────────────────────────────────────────────
+
+model MaintenanceRequest {
+  id          String            @id @default(cuid())
+  tenantId    String
+  tenant      TenantProfile     @relation(fields: [tenantId], references: [id])
+  providerId  String?
+  provider    ServiceProviderProfile? @relation(fields: [providerId], references: [id])
+  title       String
+  description String
+  status      MaintenanceStatus @default(PENDING)
+  mediaUrls   String[]
+  tenantNotes  String?
+  cmtNotes     String?
+  providerNotes String?
+  completedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
