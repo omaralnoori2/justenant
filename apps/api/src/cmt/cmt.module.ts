@@ -3,10 +3,9 @@ import { CmtService } from './cmt.service';
 import { CmtController } from './cmt.controller';
 import { PropertiesService } from './properties.service';
 import { PropertiesController } from './properties.controller';
-import { PrismaService } from '../prisma/prisma.service';
 
 @Module({
-  providers: [CmtService, PropertiesService, PrismaService],
+  providers: [CmtService, PropertiesService],
   controllers: [CmtController, PropertiesController],
 })
 export class CmtModule {}
