@@ -2,7 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Request }
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PropertiesService, CreatePropertyDto, BulkGenerateUnitsDto } from './properties.service';
 
-@Controller('api/cmt/properties')
+@Controller('cmt/properties')
 @UseGuards(JwtAuthGuard)
 export class PropertiesController {
   constructor(private propertiesService: PropertiesService) {}
