@@ -18,4 +18,4 @@ RUN npm run build
 ENV NODE_ENV=production
 EXPOSE 3001
 
-CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && node dist/main"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss 2>&1 && echo '=== STARTING ===' && node dist/main 2>&1; echo '=== EXIT '$?' ==='; tail -f /dev/null"]
