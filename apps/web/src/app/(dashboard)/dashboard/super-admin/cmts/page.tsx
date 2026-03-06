@@ -16,15 +16,83 @@ interface CMT {
   createdAt: string;
 }
 
+interface CreateCMTForm {
+  email: string;
+  password: string;
+  businessName: string;
+  businessAddress: string;
+  contactPhone: string;
+  licenseNumber: string;
+}
+
 export default function SuperAdminCMTsPage() {
   const [cmts, setCmts] = useState<CMT[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [formData, setFormData] = useState<CreateCMTForm>({
+    email: '',
+    password: '',
+    businessName: '',
+    businessAddress: '',
+    contactPhone: '',
+    licenseNumber: '',
+  });
 
   useEffect(() => {
-    api.get('/super-admin/cmts')
-      .then((r) => setCmts(r.data))
-      .finally(() => setLoading(false));
+    fetchCMTs();
   }, []);
+
+  const fetchCMTs = async () => {
+    try {
+      const r = await api.get('/super-admin/cmts');
+      setCmts(r.data);
+    } catch (err) {
+      console.error('Failed to fetch CMTs', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateCMT = async () => {
+    if (!formData.email || !formData.password || !formData.businessName || !formData.businessAddress || !formData.contactPhone) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const payload = {
+        email: formData.email,
+        password: formData.password,
+        businessName: formData.businessName,
+        businessAddress: formData.businessAddress,
+        contactPhone: formData.contactPhone,
+        ...(formData.licenseNumber && { licenseNumber: formData.licenseNumber }),
+      };
+
+      await api.post('/super-admin/cmts', payload);
+      alert('CMT account created successfully!');
+
+      // Reset form and close modal
+      setFormData({
+        email: '',
+        password: '',
+        businessName: '',
+        businessAddress: '',
+        contactPhone: '',
+        licenseNumber: '',
+      });
+      setShowModal(false);
+
+      // Refresh CMT list
+      fetchCMTs();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to create CMT');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const statusColors: Record<string, string> = {
     PENDING: 'bg-yellow-100 text-yellow-700',
@@ -36,9 +104,14 @@ export default function SuperAdminCMTsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">All CMTs</h1>
-        <p className="text-gray-500 text-sm mt-1">Compound Management Teams across the platform</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">All CMTs</h1>
+          <p className="text-gray-500 text-sm mt-1">Compound Management Teams across the platform</p>
+        </div>
+        <button onClick={() => setShowModal(true)} className="btn-primary">
+          + Add CMT
+        </button>
       </div>
 
       <div className="card overflow-hidden">
@@ -75,6 +148,74 @@ export default function SuperAdminCMTsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Create CMT Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900">Add New CMT</h2>
+
+            <input
+              type="email"
+              placeholder="Email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            />
+
+            <input
+              type="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            />
+
+            <input
+              type="text"
+              placeholder="Business Name"
+              value={formData.businessName}
+              onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            />
+
+            <textarea
+              placeholder="Business Address"
+              value={formData.businessAddress}
+              onChange={(e) => setFormData({ ...formData, businessAddress: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg min-h-[80px]"
+            />
+
+            <input
+              type="tel"
+              placeholder="Contact Phone"
+              value={formData.contactPhone}
+              onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            />
+
+            <input
+              type="text"
+              placeholder="License Number (optional)"
+              value={formData.licenseNumber}
+              onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            />
+
+            <div className="flex gap-2 pt-4">
+              <button onClick={handleCreateCMT} disabled={creating} className="flex-1 btn-primary">
+                {creating ? 'Creating...' : 'Create CMT'}
+              </button>
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 px-4 py-2 rounded-lg bg-gray-200 text-gray-900"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
