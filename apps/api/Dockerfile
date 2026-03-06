@@ -1,6 +1,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Force dev deps regardless of NODE_ENV injected by CI/CD
+ENV NODE_ENV=development
+
 COPY package*.json ./
 COPY prisma ./prisma/
 RUN npm install
