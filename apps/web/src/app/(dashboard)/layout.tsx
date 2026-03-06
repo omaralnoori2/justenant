@@ -1,8 +1,10 @@
 'use client';
 
-import dynamic from 'next/dynamic';
+export const dynamic = 'force-dynamic';
 
-const Sidebar = dynamic(() => import('@/components/layout/sidebar'), { ssr: false });
+import dynamicImport from 'next/dynamic';
+
+const Sidebar = dynamicImport(() => import('@/components/layout/sidebar'), { ssr: false });
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
