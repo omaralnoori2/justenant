@@ -60,7 +60,7 @@ export class TenantService {
     }
 
     const unit = await this.prisma.unit.findUnique({
-      where: { id: tenant.unit },
+      where: { id: tenant.unit!.id },
       include: {
         property: {
           select: {
@@ -166,8 +166,8 @@ export class TenantService {
   // Get contact details (landlord, CMT)
   async getContacts(userId: string) {
     const tenant = await this.getTenantProfileByUserId(userId);
-    const unit = await this.prisma.unit.findUnique({
-      where: { id: tenant.unit },
+    const unit = tenant.unit ? await this.prisma.unit.findUnique({
+      where: { id: tenant.unit.id },
       include: {
         property: {
           select: {
@@ -187,7 +187,7 @@ export class TenantService {
           },
         },
       },
-    });
+    }) : null;
 
     const cmt = await this.prisma.cmtProfile.findUnique({
       where: { id: tenant.cmtId },
