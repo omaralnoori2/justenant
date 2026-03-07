@@ -55,6 +55,9 @@ export default function CMTPropertiesPage() {
     unitsPerFloor: 9,
   });
 
+  // Generator modal step state
+  const [generatorStep, setGeneratorStep] = useState(1); // 1: type, 2: X value, 3: Y value, 4: Z value
+
   useEffect(() => {
     fetchProperties();
   }, []);
@@ -532,64 +535,231 @@ export default function CMTPropertiesPage() {
         </div>
       )}
 
-      {/* Bulk Unit Generator Modal */}
+      {/* Bulk Unit Generator Modal - Multi-Step */}
       {showGeneratorModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900">Generate Units</h2>
-            <p className="text-sm text-gray-500">Tower Mode: Flat [floor][unit] Tower [Letter]</p>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Number of Towers (X)</label>
-              <input
-                type="number"
-                min="1"
-                max="26"
-                value={generatorConfig.towers}
-                onChange={(e) => setGeneratorConfig({ ...generatorConfig, towers: parseInt(e.target.value) })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
-              <p className="text-xs text-gray-500 mt-1">Example: 10 towers = A to J</p>
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 space-y-6">
+            {/* Step Indicator */}
+            <div className="flex gap-2 justify-center mb-6">
+              {[1, 2, 3, 4].map((step) => (
+                <div
+                  key={step}
+                  className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                    step === generatorStep
+                      ? 'bg-brand-blue text-white'
+                      : step < generatorStep
+                      ? 'bg-brand-blue-light text-white'
+                      : 'bg-gray-200 text-gray-500'
+                  }`}
+                >
+                  {step}
+                </div>
+              ))}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Floors per Tower (Y)</label>
-              <input
-                type="number"
-                min="1"
-                value={generatorConfig.floors}
-                onChange={(e) => setGeneratorConfig({ ...generatorConfig, floors: parseInt(e.target.value) })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
-            </div>
+            {/* Step 1: Choose Towers or Villas */}
+            {generatorStep === 1 && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-bold text-brand-blue">Choose Type</h2>
+                <p className="text-sm text-brand-gray">Would you like to generate Towers or Villas?</p>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Units per Floor (Z)</label>
-              <input
-                type="number"
-                min="1"
-                max="9"
-                value={generatorConfig.unitsPerFloor}
-                onChange={(e) => setGeneratorConfig({ ...generatorConfig, unitsPerFloor: parseInt(e.target.value) })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
-            </div>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setGeneratorConfig({ ...generatorConfig, mode: 'tower' });
+                      setGeneratorStep(2);
+                    }}
+                    className={`w-full p-4 rounded-lg border-2 font-semibold transition-colors ${
+                      generatorConfig.mode === 'tower'
+                        ? 'border-brand-blue bg-brand-blue-lightest text-brand-blue'
+                        : 'border-gray-200 bg-white text-brand-dark hover:border-brand-blue'
+                    }`}
+                  >
+                    🏢 Towers
+                  </button>
+                  <button
+                    onClick={() => {
+                      setGeneratorConfig({ ...generatorConfig, mode: 'villa' });
+                      setGeneratorStep(2);
+                    }}
+                    className={`w-full p-4 rounded-lg border-2 font-semibold transition-colors ${
+                      generatorConfig.mode === 'villa'
+                        ? 'border-brand-blue bg-brand-blue-lightest text-brand-blue'
+                        : 'border-gray-200 bg-white text-brand-dark hover:border-brand-blue'
+                    }`}
+                  >
+                    🏠 Villas
+                  </button>
+                </div>
 
-            <p className="text-sm text-gray-700 bg-blue-50 p-3 rounded-lg">
-              Will generate <strong>{generatorConfig.towers * generatorConfig.floors * generatorConfig.unitsPerFloor}</strong> units
-            </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowGeneratorModal(false)}
+                    className="flex-1 px-4 py-2 rounded-lg bg-gray-200 text-brand-dark font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
-            <div className="flex gap-2">
-              <button onClick={handleGenerateUnits} className="flex-1 btn-primary">
-                Generate
-              </button>
-              <button
-                onClick={() => setShowGeneratorModal(false)}
-                className="flex-1 px-4 py-2 rounded-lg bg-gray-200 text-gray-900"
-              >
-                Cancel
-              </button>
-            </div>
+            {/* Step 2: Choose X (Towers/Areas) */}
+            {generatorStep === 2 && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-bold text-brand-blue">How Many {generatorConfig.mode === 'tower' ? 'Towers' : 'Areas'}?</h2>
+                <p className="text-sm text-brand-gray">
+                  {generatorConfig.mode === 'tower'
+                    ? 'Each tower will be named Tower A, Tower B, Tower C, etc.'
+                    : 'Each area will be named Area A, Area B, Area C, etc.'}
+                </p>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-dark mb-2">Enter number (1-26)</label>
+                  <input
+                    autoFocus
+                    type="number"
+                    min="1"
+                    max="26"
+                    value={generatorConfig.towers}
+                    onChange={(e) => setGeneratorConfig({ ...generatorConfig, towers: parseInt(e.target.value) || 1 })}
+                    className="input-field text-center text-xl font-bold"
+                  />
+                  <p className="text-xs text-brand-gray mt-2">
+                    Example: 10 = {generatorConfig.mode === 'tower' ? 'Towers A to J' : 'Areas A to J'}
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setGeneratorStep(1)}
+                    className="flex-1 px-4 py-2 rounded-lg bg-gray-200 text-brand-dark font-medium"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setGeneratorStep(3)}
+                    className="flex-1 btn-primary"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Choose Y (Floors/Blocks) */}
+            {generatorStep === 3 && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-bold text-brand-blue">
+                  How Many {generatorConfig.mode === 'tower' ? 'Floors' : 'Blocks'} per {generatorConfig.mode === 'tower' ? 'Tower' : 'Area'}?
+                </h2>
+                <p className="text-sm text-brand-gray text-center">
+                  Step 2: X = {generatorConfig.towers} {generatorConfig.mode === 'tower' ? 'Towers' : 'Areas'}
+                </p>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-dark mb-2">Enter number</label>
+                  <input
+                    autoFocus
+                    type="number"
+                    min="1"
+                    value={generatorConfig.floors}
+                    onChange={(e) => setGeneratorConfig({ ...generatorConfig, floors: parseInt(e.target.value) || 1 })}
+                    className="input-field text-center text-xl font-bold"
+                  />
+                  <p className="text-xs text-brand-gray mt-2">
+                    Example: 30 = {generatorConfig.floors} {generatorConfig.mode === 'tower' ? 'floors' : 'blocks'} per {generatorConfig.mode === 'tower' ? 'tower' : 'area'}
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setGeneratorStep(2)}
+                    className="flex-1 px-4 py-2 rounded-lg bg-gray-200 text-brand-dark font-medium"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setGeneratorStep(4)}
+                    className="flex-1 btn-primary"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Choose Z (Units/Villas) */}
+            {generatorStep === 4 && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-bold text-brand-blue">
+                  How Many {generatorConfig.mode === 'tower' ? 'Flats' : 'Villas'} per {generatorConfig.mode === 'tower' ? 'Floor' : 'Block'}?
+                </h2>
+                <div className="bg-brand-blue-lightest p-3 rounded-lg text-sm text-brand-dark">
+                  <p>X = {generatorConfig.towers} {generatorConfig.mode === 'tower' ? 'Towers' : 'Areas'}</p>
+                  <p>Y = {generatorConfig.floors} {generatorConfig.mode === 'tower' ? 'Floors' : 'Blocks'} per {generatorConfig.mode === 'tower' ? 'Tower' : 'Area'}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-dark mb-2">Enter number (1-9)</label>
+                  <input
+                    autoFocus
+                    type="number"
+                    min="1"
+                    max="9"
+                    value={generatorConfig.unitsPerFloor}
+                    onChange={(e) => setGeneratorConfig({ ...generatorConfig, unitsPerFloor: parseInt(e.target.value) || 1 })}
+                    className="input-field text-center text-xl font-bold"
+                  />
+                  <p className="text-xs text-brand-gray mt-2">
+                    Example: 9 = 9 {generatorConfig.mode === 'tower' ? 'flats' : 'villas'} per {generatorConfig.mode === 'tower' ? 'floor' : 'block'}
+                  </p>
+                </div>
+
+                {/* Preview */}
+                <div className="bg-brand-blue-lightest p-4 rounded-lg space-y-2 border-2 border-brand-blue">
+                  <p className="text-sm font-bold text-brand-blue">Preview:</p>
+                  <p className="text-xs text-brand-dark">
+                    <strong>Total Units:</strong> {generatorConfig.towers} × {generatorConfig.floors} × {generatorConfig.unitsPerFloor} = <strong className="text-brand-blue">{generatorConfig.towers * generatorConfig.floors * generatorConfig.unitsPerFloor}</strong> units
+                  </p>
+                  <p className="text-xs text-brand-dark">
+                    <strong>Example Unit Names:</strong>
+                  </p>
+                  {generatorConfig.mode === 'tower' && (
+                    <>
+                      <p className="text-xs text-brand-gray ml-3">• Flat 101 Tower A (Tower A, Floor 1, Flat 1)</p>
+                      <p className="text-xs text-brand-gray ml-3">• Flat 109 Tower A (Tower A, Floor 1, Flat 9)</p>
+                      <p className="text-xs text-brand-gray ml-3">• Flat 201 Tower A (Tower A, Floor 2, Flat 1)</p>
+                      <p className="text-xs text-brand-gray ml-3">• Flat 301 Tower B (Tower B, Floor 3, Flat 1)</p>
+                    </>
+                  )}
+                  {generatorConfig.mode === 'villa' && (
+                    <>
+                      <p className="text-xs text-brand-gray ml-3">• Villa 101 Area A (Area A, Block 1, Villa 1)</p>
+                      <p className="text-xs text-brand-gray ml-3">• Villa 109 Area A (Area A, Block 1, Villa 9)</p>
+                      <p className="text-xs text-brand-gray ml-3">• Villa 201 Area B (Area B, Block 2, Villa 1)</p>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setGeneratorStep(3)}
+                    className="flex-1 px-4 py-2 rounded-lg bg-gray-200 text-brand-dark font-medium"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleGenerateUnits();
+                      setGeneratorStep(1);
+                    }}
+                    className="flex-1 btn-primary"
+                  >
+                    Generate {generatorConfig.towers * generatorConfig.floors * generatorConfig.unitsPerFloor} Units
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
