@@ -1,12 +1,39 @@
 import { PrismaClient, Role, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  log: [
+    { emit: 'stdout', level: 'query' },
+    { emit: 'stdout', level: 'error' },
+    { emit: 'stdout', level: 'warn' },
+  ],
+});
 
 async function main() {
+  try {
+    console.log('🌱 Starting database seed...');
+    console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✓ Set' : '✗ Not set');
+  } catch (e) {
+    console.error('Error checking env:', e);
+  }
+
+  try {
+    console.log('🔗 Connecting to database...');
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('✓ Database connection successful');
+  } catch (e) {
+    console.error('✗ Database connection failed:', e);
+    throw e;
+  }
+
   console.log('Seeding database...');
 
   // Subscription tiers
+  try {
+    console.log('📦 Creating subscription tiers...');
+  } catch (e) {
+    console.error('Error:', e);
+  }
   const tiers = await Promise.all([
     prisma.subscriptionTier.upsert({
       where: { name: 'Starter' },
@@ -87,5 +114,19 @@ async function main() {
 }
 
 main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .then(() => {
+    console.log('✓ Seeding completed successfully');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('✗ Seeding failed:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    try {
+      await prisma.$disconnect();
+      console.log('✓ Disconnected from database');
+    } catch (e) {
+      console.error('✗ Error disconnecting:', e);
+    }
+  });
