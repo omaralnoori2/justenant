@@ -10,6 +10,7 @@ interface Property {
   name: string;
   address: string;
   landlord?: { name: string };
+  logo?: string; // URL to property logo/image
   unitCount?: number;
 }
 
@@ -416,24 +417,50 @@ export default function CMTPropertiesPage() {
         <div className="space-y-6">
           {filteredAndSortedProperties.map((property) => (
             <div key={property.id} className="card border-l-4 border-l-brand-blue">
-              {/* Property Header */}
-              <div className="flex items-center justify-between mb-4 pb-3 border-b-2 border-brand-blue">
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-brand-blue">{property.name}</h3>
-                  <p className="text-sm text-brand-gray mt-1">{property.address}</p>
-                </div>
-                <div className="flex gap-2">
+              {/* Compound Property Header with Logo */}
+              <div className="mb-4 pb-4 border-b-2 border-brand-blue">
+                {/* Top Row: Logo and Unit Badge */}
+                <div className="flex items-start justify-between mb-3">
+                  {/* Logo */}
+                  <div className="flex-shrink-0">
+                    {property.logo ? (
+                      <img
+                        src={property.logo}
+                        alt={property.name}
+                        className="h-12 w-12 rounded-lg object-cover border border-brand-blue-lightest"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="h-12 w-12 rounded-lg bg-brand-blue-lightest border border-brand-blue flex items-center justify-center text-brand-blue font-bold">
+                        {property.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Unit Count Badge */}
                   <span className="px-3 py-1 rounded-full bg-brand-blue-lightest text-brand-blue font-semibold text-sm">
                     {allPropertyUnits[property.id]?.length || 0} units
                   </span>
+                </div>
+
+                {/* Center: Name and Address */}
+                <div className="text-center mb-3">
+                  <h3 className="text-xl font-bold text-brand-blue mb-1">{property.name}</h3>
+                  <p className="text-sm text-brand-gray">{property.address}</p>
+                </div>
+
+                {/* Generate Button */}
+                <div className="flex justify-center">
                   <button
                     onClick={() => {
                       setSelectedPropertyId(property.id);
                       setShowGeneratorModal(true);
                     }}
-                    className="text-sm px-3 py-1 rounded-lg bg-brand-blue text-white hover:bg-brand-blue-light transition-colors font-medium"
+                    className="px-4 py-2 rounded-lg bg-brand-blue text-white hover:bg-brand-blue-light transition-colors font-medium text-sm"
                   >
-                    + Generate
+                    + Generate Units
                   </button>
                 </div>
               </div>
