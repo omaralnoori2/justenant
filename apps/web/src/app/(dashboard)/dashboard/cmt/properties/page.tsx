@@ -329,8 +329,8 @@ export default function CMTPropertiesPage() {
                     <thead>
                       <tr className="bg-brand-blue-lightest border-b-2 border-brand-blue">
                         <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/4">Unit Name</th>
-                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/6">Tower/Block</th>
-                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/6">Floor</th>
+                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/6">Tower/Area</th>
+                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/6">Floor/Block</th>
                         <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/4">Tenant</th>
                         <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/4">Landlord</th>
                       </tr>
