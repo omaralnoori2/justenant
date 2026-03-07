@@ -46,6 +46,7 @@ export default function CMTPropertiesPage() {
 
   // View and filter states
   const [viewType, setViewType] = useState<ViewType>('spreadsheet');
+  const [kanbanViewType, setKanbanViewType] = useState<'properties' | 'units'>('properties');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('name-asc');
 
@@ -865,8 +866,35 @@ export default function CMTPropertiesPage() {
         </div>
       ) : (
         /* KANBAN VIEW */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredAndSortedProperties.map((property) => (
+        <div className="space-y-4">
+          {/* Kanban View Type Toggle */}
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => setKanbanViewType('properties')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                kanbanViewType === 'properties'
+                  ? 'bg-brand-blue text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              🏢 Properties
+            </button>
+            <button
+              onClick={() => setKanbanViewType('units')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                kanbanViewType === 'units'
+                  ? 'bg-brand-blue text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              📦 Units
+            </button>
+          </div>
+
+          {/* Properties View */}
+          {kanbanViewType === 'properties' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredAndSortedProperties.map((property) => (
             <div
               key={property.id}
               className="card hover:shadow-lg transition-shadow border-l-4 border-l-brand-blue flex flex-col"
@@ -935,7 +963,106 @@ export default function CMTPropertiesPage() {
                 </button>
               </div>
             </div>
-          ))}
+            ))}
+            </div>
+          ) : (
+            /* Units View - Individual Unit Cards */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.values(allPropertyUnits)
+                .flat()
+                .filter(unit =>
+                  unit.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  extractUnitCode(unit.name).toLowerCase().includes(searchQuery.toLowerCase())
+                )
+                .map((unit) => (
+                  <div
+                    key={unit.id}
+                    className="card hover:shadow-lg transition-shadow border-l-4 border-l-brand-blue flex flex-col"
+                  >
+                    {/* Unit Header */}
+                    <div className="mb-3 pb-3 border-b border-gray-200">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="text-xs font-semibold text-brand-gray uppercase">Unit Code</p>
+                          <p className="text-lg font-bold text-brand-blue">{extractUnitCode(unit.name)}</p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          unit.tenant
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {unit.tenant ? 'Occupied' : 'Vacant'}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-900">{unit.name}</p>
+                    </div>
+
+                    {/* Unit Details */}
+                    <div className="space-y-2 mb-4 flex-1 text-sm">
+                      {unit.floor !== undefined && (
+                        <div>
+                          <p className="text-xs text-brand-gray font-semibold">Floor/Block</p>
+                          <p className="text-gray-900">{unit.floor}</p>
+                        </div>
+                      )}
+                      {unit.tenant && (
+                        <div>
+                          <p className="text-xs text-brand-gray font-semibold">Tenant</p>
+                          <p className="text-gray-900">{unit.tenant.firstName} {unit.tenant.lastName}</p>
+                        </div>
+                      )}
+                      {unit.landlord && (
+                        <div>
+                          <p className="text-xs text-brand-gray font-semibold">Landlord</p>
+                          <p className="text-gray-900">{unit.landlord.name}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => {
+                          setEditingCell({ unitId: unit.id, field: 'name' });
+                          setEditingValue(unit.name);
+                        }}
+                        className="w-full text-sm px-3 py-2 rounded-lg bg-brand-blue text-white hover:bg-brand-blue-light transition-colors font-medium"
+                      >
+                        ✎ Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete unit "${unit.name}"?`)) {
+                            // Find the property for this unit and delete it
+                            for (const [propertyId, units] of Object.entries(allPropertyUnits)) {
+                              if (units.find(u => u.id === unit.id)) {
+                                api.delete(`/cmt/properties/${propertyId}/units/${unit.id}`)
+                                  .then(() => {
+                                    setAllPropertyUnits(prev => ({
+                                      ...prev,
+                                      [propertyId]: prev[propertyId].filter(u => u.id !== unit.id)
+                                    }));
+                                  })
+                                  .catch(err => alert('Failed to delete unit'));
+                                break;
+                              }
+                            }
+                          }
+                        }}
+                        className="w-full text-sm px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              {Object.values(allPropertyUnits).flat().length === 0 && (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-brand-gray">No units yet. Generate units from properties.</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
