@@ -60,6 +60,12 @@ export default function CMTPropertiesPage() {
   // Bulk operations
   const [selectedUnits, setSelectedUnits] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+  const [bulkEditConfig, setBulkEditConfig] = useState({
+    namePrefix: '',
+    addFloor: 0,
+    operation: 'rename', // 'rename' | 'addFloor'
+  });
 
   // Form states
   const [formData, setFormData] = useState({ name: '', address: '' });
@@ -297,6 +303,76 @@ export default function CMTPropertiesPage() {
     }
   };
 
+  // Handle bulk edit
+  const handleBulkEdit = async (propertyId: string) => {
+    if (selectedUnits.size === 0) {
+      alert('No units selected');
+      return;
+    }
+
+    if (bulkEditConfig.operation === 'rename' && !bulkEditConfig.namePrefix.trim()) {
+      alert('Please enter a name prefix');
+      return;
+    }
+
+    try {
+      const unitIdsToEdit = Array.from(selectedUnits);
+      const unitToUpdate = Object.values(allPropertyUnits)
+        .flat()
+        .filter(u => unitIdsToEdit.includes(u.id));
+
+      // Show confirmation with preview
+      let confirmMessage = `Update ${unitIdsToEdit.length} units?\n\n`;
+      if (bulkEditConfig.operation === 'rename') {
+        confirmMessage += `Change names to format: "${bulkEditConfig.namePrefix} [unit info]"\n`;
+        confirmMessage += `Example: "${bulkEditConfig.namePrefix} Tower A, Flat 101"\n`;
+      } else if (bulkEditConfig.operation === 'addFloor') {
+        confirmMessage += `Add ${bulkEditConfig.addFloor} to floor numbers\n`;
+      }
+
+      if (!confirm(confirmMessage)) return;
+
+      // Update each unit
+      for (const unit of unitToUpdate) {
+        const updateData: Record<string, any> = {};
+
+        if (bulkEditConfig.operation === 'rename') {
+          // Create new name with prefix
+          updateData.name = `${bulkEditConfig.namePrefix} ${unit.name}`;
+        } else if (bulkEditConfig.operation === 'addFloor') {
+          updateData.floor = (unit.floor || 0) + bulkEditConfig.addFloor;
+        }
+
+        await api.patch(`/cmt/properties/${propertyId}/units/${unit.id}`, updateData);
+      }
+
+      // Update local state
+      setAllPropertyUnits(prev => ({
+        ...prev,
+        [propertyId]: prev[propertyId].map(u => {
+          if (selectedUnits.has(u.id)) {
+            const updateData: Record<string, any> = {};
+            if (bulkEditConfig.operation === 'rename') {
+              updateData.name = `${bulkEditConfig.namePrefix} ${u.name}`;
+            } else if (bulkEditConfig.operation === 'addFloor') {
+              updateData.floor = (u.floor || 0) + bulkEditConfig.addFloor;
+            }
+            return { ...u, ...updateData };
+          }
+          return u;
+        })
+      }));
+
+      alert(`Updated ${unitIdsToEdit.length} units successfully`);
+      setSelectedUnits(new Set());
+      setShowBulkEditModal(false);
+      setBulkEditConfig({ namePrefix: '', addFloor: 0, operation: 'rename' });
+    } catch (err) {
+      alert('Failed to update units');
+      console.error(err);
+    }
+  };
+
   // Save cell in spreadsheet view
   const handleSaveCell = async (propertyId: string, unitId: string, field: 'name' | 'floor') => {
     if (!editingValue.trim() && field === 'name') {
@@ -477,6 +553,15 @@ export default function CMTPropertiesPage() {
                       className="px-3 py-1 text-sm rounded-lg bg-white text-brand-dark hover:bg-gray-100 border border-brand-gray transition-colors font-medium"
                     >
                       Deselect All
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedPropertyId(property.id);
+                        setShowBulkEditModal(true);
+                      }}
+                      className="px-3 py-1 text-sm rounded-lg bg-brand-blue text-white hover:bg-brand-blue-light transition-colors font-medium"
+                    >
+                      ✎ Edit Selected
                     </button>
                     <button
                       onClick={() => {
@@ -1197,6 +1282,107 @@ export default function CMTPropertiesPage() {
                 className="flex-1 px-4 py-2 rounded-lg bg-gray-200 text-gray-900"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Edit Modal */}
+      {showBulkEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 space-y-4">
+            <h2 className="text-lg font-bold text-brand-blue">Bulk Edit Units</h2>
+            <p className="text-sm text-gray-700">
+              Apply changes to <span className="font-semibold">{selectedUnits.size}</span> selected unit{selectedUnits.size !== 1 ? 's' : ''}
+            </p>
+
+            {/* Operation Selector */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Edit Type:</label>
+              <select
+                value={bulkEditConfig.operation}
+                onChange={(e) => setBulkEditConfig({ ...bulkEditConfig, operation: e.target.value as any })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+              >
+                <option value="rename">Prefix Unit Names</option>
+                <option value="addFloor">Add to Floor Number</option>
+              </select>
+            </div>
+
+            {/* Dynamic Input Based on Operation */}
+            {bulkEditConfig.operation === 'rename' && (
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Name Prefix:</label>
+                <input
+                  type="text"
+                  value={bulkEditConfig.namePrefix}
+                  onChange={(e) => setBulkEditConfig({ ...bulkEditConfig, namePrefix: e.target.value })}
+                  placeholder="e.g., 'Flat' or 'Unit'"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                />
+                <p className="text-xs text-gray-500 italic">
+                  Example: if prefix is "Tower A", names become "Tower A [current name]"
+                </p>
+              </div>
+            )}
+
+            {bulkEditConfig.operation === 'addFloor' && (
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Add to Floor Number:</label>
+                <input
+                  type="number"
+                  value={bulkEditConfig.addFloor}
+                  onChange={(e) => setBulkEditConfig({ ...bulkEditConfig, addFloor: parseInt(e.target.value) || 0 })}
+                  placeholder="e.g., 10"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                />
+                <p className="text-xs text-gray-500 italic">
+                  Example: if current floor is 1 and you add 10, new floor will be 11
+                </p>
+              </div>
+            )}
+
+            {/* Preview */}
+            <div className="bg-gray-50 rounded p-3">
+              <p className="text-xs font-semibold text-gray-600 mb-2">Preview of first few changes:</p>
+              <div className="space-y-1 text-xs text-gray-700">
+                {Array.from(selectedUnits)
+                  .slice(0, 3)
+                  .map(unitId => {
+                    const unit = Object.values(allPropertyUnits)
+                      .flat()
+                      .find(u => u.id === unitId);
+                    if (!unit) return null;
+                    let preview = unit.name;
+                    if (bulkEditConfig.operation === 'rename' && bulkEditConfig.namePrefix) {
+                      preview = `${bulkEditConfig.namePrefix} ${unit.name}`;
+                    } else if (bulkEditConfig.operation === 'addFloor') {
+                      preview = `Floor: ${(unit.floor || 0) + bulkEditConfig.addFloor}`;
+                    }
+                    return <div key={unitId}>• {preview}</div>;
+                  })}
+                {selectedUnits.size > 3 && <div className="text-gray-500">... and {selectedUnits.size - 3} more</div>}
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  handleBulkEdit(selectedPropertyId);
+                }}
+                className="flex-1 px-4 py-2 rounded-lg bg-brand-blue text-white hover:bg-brand-blue-light font-medium"
+              >
+                Apply Changes
+              </button>
+              <button
+                onClick={() => {
+                  setShowBulkEditModal(false);
+                  setBulkEditConfig({ namePrefix: '', addFloor: 0, operation: 'rename' });
+                }}
+                className="flex-1 px-4 py-2 rounded-lg bg-gray-200 text-gray-900 hover:bg-gray-300 font-medium"
+              >
+                Cancel
               </button>
             </div>
           </div>
