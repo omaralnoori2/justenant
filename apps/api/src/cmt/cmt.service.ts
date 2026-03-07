@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Role } from '../common/enums/role.enum';
 
 @Injectable()
 export class CmtService {
@@ -145,7 +146,7 @@ export class CmtService {
         data: {
           email: data.email,
           passwordHash,
-          role: 'TENANT',
+          role: Role.TENANT,
           status: 'ACTIVE',
         },
       });
@@ -180,7 +181,7 @@ export class CmtService {
         data: {
           email: data.email,
           passwordHash,
-          role: 'LANDLORD',
+          role: Role.LANDLORD,
           status: 'ACTIVE',
         },
       });
@@ -215,7 +216,7 @@ export class CmtService {
         data: {
           email: data.email,
           passwordHash,
-          role: 'SERVICE_PROVIDER',
+          role: Role.SERVICE_PROVIDER,
           status: 'ACTIVE',
         },
       });
