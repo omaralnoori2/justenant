@@ -58,6 +58,31 @@ async function main() {
     console.log('✓ Portal Team created: portal@justanent.com / Portal@123');
   }
 
+  // Test CMT
+  const cmtEmail = 'testcmt@example.com';
+  const existingCmt = await prisma.user.findUnique({ where: { email: cmtEmail } });
+  if (!existingCmt) {
+    const cmtUser = await prisma.user.create({
+      data: {
+        email: cmtEmail,
+        passwordHash: await bcrypt.hash('TestCMT@12', 10),
+        role: Role.CMT,
+        status: UserStatus.ACTIVE,
+      },
+    });
+    await prisma.cmtProfile.create({
+      data: {
+        userId: cmtUser.id,
+        businessName: 'Test CMT Company',
+        businessAddress: '123 Test Street',
+        contactPhone: '555-0123',
+        status: 'APPROVED',
+        subscriptionTierId: tiers.find(t => t.name === 'Growth')?.id,
+      },
+    });
+    console.log('✓ Test CMT created: testcmt@example.com / TestCMT@12');
+  }
+
   console.log('Seeding complete.');
 }
 
