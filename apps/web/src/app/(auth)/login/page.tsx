@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import api from '@/lib/api';
 import { saveTokens, getDashboardPath } from '@/lib/auth';
 import type { AuthTokens } from '@/types';
@@ -32,17 +33,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-dark to-brand">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-blue-lightest via-white to-brand-blue-lighter">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 border border-brand-blue-lightest">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-brand">JusTenant</h1>
-            <p className="text-gray-500 mt-1 text-sm">Property Management Portal</p>
+            <div className="flex justify-center mb-4">
+              <Image
+                src="/logos/logo-full.png"
+                alt="JusTenant"
+                width={200}
+                height={80}
+                priority
+                className="h-auto w-auto"
+              />
+            </div>
+            <p className="text-brand-gray mt-2 text-sm font-proxima-nova">Where Tenants Come First</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-brand-dark mb-1 font-proxima-nova">Email</label>
               <input
                 type="email"
                 value={email}
@@ -54,7 +64,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label className="block text-sm font-medium text-brand-dark mb-1 font-proxima-nova">Password</label>
               <input
                 type="password"
                 value={password}
@@ -66,19 +76,19 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-proxima-nova">
                 {error}
               </div>
             )}
 
-            <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
+            <button type="submit" disabled={loading} className="btn-primary w-full py-2.5 font-proxima-nova">
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-500">
+          <div className="mt-6 text-center text-sm text-brand-gray font-proxima-nova">
             Are you a property manager?{' '}
-            <Link href="/register/cmt" className="text-brand font-medium hover:underline">
+            <Link href="/register/cmt" className="text-brand-blue font-semibold hover:text-brand-blue-light transition-colors">
               Register your company
             </Link>
           </div>

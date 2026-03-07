@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { clearTokens, getRole } from '@/lib/auth';
 import type { Role } from '@/types';
@@ -69,12 +70,23 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-64 min-h-screen bg-brand-dark text-white flex flex-col">
-      <div className="p-6 border-b border-white/10">
-        <h1 className="text-xl font-bold">JusTenant</h1>
-        {role && (
-          <span className="text-xs text-white/60 mt-1 block">{ROLE_LABELS[role]}</span>
-        )}
+    <aside className="w-64 min-h-screen bg-white text-brand-dark flex flex-col border-r border-gray-200">
+      <div className="p-4 border-b border-gray-200">
+        <Link href="/dashboard/cmt" className="flex items-center gap-2">
+          <Image
+            src="/logos/logo-icon.jpg"
+            alt="JusTenant"
+            width={40}
+            height={40}
+            className="rounded"
+          />
+          <div className="flex-1">
+            <h1 className="text-lg font-bold text-brand-blue">JusTenant</h1>
+            {role && (
+              <span className="text-xs text-brand-gray block">{ROLE_LABELS[role]}</span>
+            )}
+          </div>
+        </Link>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
@@ -83,10 +95,10 @@ export default function Sidebar() {
             key={item.href}
             href={item.href}
             className={clsx(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors font-proxima-nova',
               pathname === item.href
-                ? 'bg-white/20 text-white'
-                : 'text-white/70 hover:bg-white/10 hover:text-white',
+                ? 'bg-brand-blue-lightest text-brand-blue font-semibold'
+                : 'text-brand-gray hover:bg-gray-100 hover:text-brand-blue',
             )}
           >
             <span>{item.icon}</span>
@@ -95,10 +107,10 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4 border-t border-gray-200">
         <button
           onClick={handleLogout}
-          className="w-full text-left px-3 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+          className="w-full text-left px-3 py-2.5 text-sm text-brand-gray hover:text-brand-blue hover:bg-brand-blue-lightest rounded-lg transition-colors font-proxima-nova"
         >
           Sign out
         </button>

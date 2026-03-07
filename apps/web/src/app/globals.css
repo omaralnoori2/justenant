@@ -1,24 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Proxima+Nova:wght@400;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-gray-50 text-brand-dark antialiased font-proxima-nova;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-brand-blue font-proxima-nova;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-brand text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-brand-blue text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-blue-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-proxima-nova font-semibold;
   }
   .btn-secondary {
-    @apply border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors;
+    @apply border border-brand-gray text-brand-dark px-4 py-2 rounded-lg font-medium hover:bg-brand-gray-lightest transition-colors font-proxima-nova;
+  }
+  .btn-tertiary {
+    @apply text-brand-blue px-4 py-2 rounded-lg font-medium hover:bg-brand-blue-lightest transition-colors font-proxima-nova;
   }
   .input-field {
-    @apply w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent;
+    @apply w-full border border-brand-gray-lighter rounded-lg px-3 py-2 text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent font-proxima-nova;
   }
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6 font-proxima-nova;
+  }
+  .section-title {
+    @apply text-2xl font-bold text-brand-blue font-proxima-nova;
+  }
+  .section-subtitle {
+    @apply text-sm text-brand-gray font-proxima-nova;
   }
 }
