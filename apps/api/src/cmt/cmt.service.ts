@@ -131,14 +131,13 @@ export class CmtService {
   }
 }
 
-  async createTenant(cmtUserId: string, data: { email: string; firstName: string; lastName: string; phone?: string }) {
+  async createTenant(cmtUserId: string, data: { email: string; firstName: string; lastName: string; phone: string; password: string }) {
     const cmt = await this.getCmtByUserId(cmtUserId);
     const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
     if (existing) throw new Error('Email already exists');
 
-    const tempPassword = Math.random().toString(36).slice(-8);
     const bcrypt = require('bcryptjs');
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const passwordHash = await bcrypt.hash(data.password, 10);
 
     return this.prisma.user.create({
       data: {
@@ -159,14 +158,13 @@ export class CmtService {
     });
   }
 
-  async createLandlord(cmtUserId: string, data: { email: string; firstName: string; lastName: string; phone?: string }) {
+  async createLandlord(cmtUserId: string, data: { email: string; firstName: string; lastName: string; phone: string; password: string }) {
     const cmt = await this.getCmtByUserId(cmtUserId);
     const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
     if (existing) throw new Error('Email already exists');
 
-    const tempPassword = Math.random().toString(36).slice(-8);
     const bcrypt = require('bcryptjs');
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const passwordHash = await bcrypt.hash(data.password, 10);
 
     return this.prisma.user.create({
       data: {
@@ -187,14 +185,13 @@ export class CmtService {
     });
   }
 
-  async createServiceProvider(cmtUserId: string, data: { email: string; firstName: string; lastName: string; phone?: string; serviceType?: string }) {
+  async createServiceProvider(cmtUserId: string, data: { email: string; firstName: string; lastName: string; phone: string; password: string; serviceType?: string }) {
     const cmt = await this.getCmtByUserId(cmtUserId);
     const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
     if (existing) throw new Error('Email already exists');
 
-    const tempPassword = Math.random().toString(36).slice(-8);
     const bcrypt = require('bcryptjs');
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const passwordHash = await bcrypt.hash(data.password, 10);
 
     return this.prisma.user.create({
       data: {

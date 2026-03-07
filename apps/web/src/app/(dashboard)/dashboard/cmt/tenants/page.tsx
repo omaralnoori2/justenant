@@ -10,7 +10,7 @@ interface Tenant {
   email: string;
   firstName: string;
   lastName: string;
-  phone?: string;
+  phone: string;
   status: string;
   createdAt: string;
 }
@@ -19,7 +19,7 @@ export default function CMTTenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ email: '', firstName: '', lastName: '', phone: '' });
+  const [formData, setFormData] = useState({ email: '', firstName: '', lastName: '', phone: '', password: '' });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function CMTTenantsPage() {
     try {
       await api.post('/cmt/tenants', formData);
       alert('Tenant created successfully!');
-      setFormData({ email: '', firstName: '', lastName: '', phone: '' });
+      setFormData({ email: '', firstName: '', lastName: '', phone: '', password: '' });
       setShowForm(false);
       fetchTenants();
     } catch (err) {
@@ -86,6 +86,16 @@ export default function CMTTenantsPage() {
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="input-field"
+                  required
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                 <input
                   type="text"
@@ -105,13 +115,14 @@ export default function CMTTenantsPage() {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone (optional)</label>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                 <input
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   className="input-field"
+                  required
                 />
               </div>
             </div>
@@ -152,7 +163,7 @@ export default function CMTTenantsPage() {
                 <tr key={tenant.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{tenant.firstName} {tenant.lastName}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{tenant.email}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{tenant.phone || '—'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{tenant.phone}</td>
                   <td className="px-6 py-4 text-sm">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                       tenant.status === 'ACTIVE' 
