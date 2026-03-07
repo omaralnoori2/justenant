@@ -141,23 +141,26 @@ export class CmtService {
       const bcrypt = require('bcryptjs');
       const passwordHash = await bcrypt.hash(data.password, 10);
 
-      return await this.prisma.user.create({
+      const user = await this.prisma.user.create({
         data: {
           email: data.email,
           passwordHash,
           role: 'TENANT',
           status: 'ACTIVE',
-          tenantProfile: {
-            create: {
-              firstName: data.firstName,
-              lastName: data.lastName,
-              phone: data.phone,
-              cmtId: cmt.id,
-            },
-          },
         },
-        include: { tenantProfile: true },
       });
+
+      await this.prisma.tenantProfile.create({
+        data: {
+          userId: user.id,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          cmtId: cmt.id,
+        },
+      });
+
+      return { id: user.id, email: user.email, role: user.role, status: user.status };
     } catch (error) {
       console.error('Error creating tenant:', error);
       throw error;
@@ -173,23 +176,26 @@ export class CmtService {
       const bcrypt = require('bcryptjs');
       const passwordHash = await bcrypt.hash(data.password, 10);
 
-      return await this.prisma.user.create({
+      const user = await this.prisma.user.create({
         data: {
           email: data.email,
           passwordHash,
           role: 'LANDLORD',
           status: 'ACTIVE',
-          landlordProfile: {
-            create: {
-              firstName: data.firstName,
-              lastName: data.lastName,
-              phone: data.phone,
-              cmtId: cmt.id,
-            },
-          },
         },
-        include: { landlordProfile: true },
       });
+
+      await this.prisma.landlordProfile.create({
+        data: {
+          userId: user.id,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          cmtId: cmt.id,
+        },
+      });
+
+      return { id: user.id, email: user.email, role: user.role, status: user.status };
     } catch (error) {
       console.error('Error creating landlord:', error);
       throw error;
@@ -205,24 +211,27 @@ export class CmtService {
       const bcrypt = require('bcryptjs');
       const passwordHash = await bcrypt.hash(data.password, 10);
 
-      return await this.prisma.user.create({
+      const user = await this.prisma.user.create({
         data: {
           email: data.email,
           passwordHash,
           role: 'SERVICE_PROVIDER',
           status: 'ACTIVE',
-          spProfile: {
-            create: {
-              firstName: data.firstName,
-              lastName: data.lastName,
-              phone: data.phone,
-              serviceType: data.serviceType || 'General',
-              cmtId: cmt.id,
-            },
-          },
         },
-        include: { spProfile: true },
       });
+
+      await this.prisma.serviceProviderProfile.create({
+        data: {
+          userId: user.id,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          serviceType: data.serviceType || 'General',
+          cmtId: cmt.id,
+        },
+      });
+
+      return { id: user.id, email: user.email, role: user.role, status: user.status };
     } catch (error) {
       console.error('Error creating service provider:', error);
       throw error;
