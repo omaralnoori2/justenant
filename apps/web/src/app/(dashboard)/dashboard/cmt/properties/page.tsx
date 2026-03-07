@@ -24,7 +24,7 @@ interface Unit {
 type ViewType = 'kanban' | 'spreadsheet';
 type SortBy = 'name-asc' | 'name-desc' | 'units-high' | 'units-low';
 type EditingCell = { unitId: string; field: 'name' | 'floor' } | null;
-type ColumnSortType = 'unitName' | 'tower' | 'floor' | 'tenant' | 'landlord';
+type ColumnSortType = 'unitCode' | 'unitName' | 'tower' | 'floor' | 'tenant' | 'landlord';
 type SortDirection = 'asc' | 'desc';
 
 export default function CMTPropertiesPage() {
@@ -228,6 +228,8 @@ export default function CMTPropertiesPage() {
 
     sorted.sort((a, b) => {
       switch (columnSort.column) {
+        case 'unitCode':
+          return compareValues(extractUnitCode(a.name), extractUnitCode(b.name));
         case 'unitName':
           return compareValues(extractUnitNumber(a.name), extractUnitNumber(b.name));
         case 'tower':
@@ -424,25 +426,139 @@ export default function CMTPropertiesPage() {
                 </div>
               </div>
 
+              {/* Bulk Actions Bar */}
+              {selectedUnits.size > 0 && (
+                <div className="mb-4 p-3 bg-brand-blue-lightest rounded-lg border-l-4 border-brand-blue flex items-center justify-between">
+                  <span className="text-sm font-semibold text-brand-blue">
+                    {selectedUnits.size} unit{selectedUnits.size !== 1 ? 's' : ''} selected
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSelectedUnits(new Set())}
+                      className="px-3 py-1 text-sm rounded-lg bg-white text-brand-dark hover:bg-gray-100 border border-brand-gray transition-colors font-medium"
+                    >
+                      Deselect All
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedPropertyId(property.id);
+                        setShowBulkDeleteModal(true);
+                      }}
+                      className="px-3 py-1 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium"
+                    >
+                      Delete Selected
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Spreadsheet Table */}
               {allPropertyUnits[property.id] && allPropertyUnits[property.id].length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-sm">
                     <thead>
                       <tr className="bg-brand-blue-lightest border-b-2 border-brand-blue">
-                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/4">Unit Name</th>
-                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/6">Tower/Area</th>
-                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/6">Floor/Block</th>
-                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/4">Tenant</th>
-                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/4">Landlord</th>
+                        {/* Checkbox Column */}
+                        <th className="px-3 py-3 text-center font-bold text-brand-blue w-12">
+                          <input
+                            type="checkbox"
+                            checked={selectedUnits.size === allPropertyUnits[property.id].length && selectedUnits.size > 0}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                const allIds = new Set(allPropertyUnits[property.id].map(u => u.id));
+                                setSelectedUnits(allIds);
+                              } else {
+                                setSelectedUnits(new Set());
+                              }
+                            }}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                        </th>
+
+                        {/* Unit Code Header */}
+                        <th
+                          className="px-4 py-3 text-left font-bold text-brand-blue w-20 cursor-pointer hover:bg-brand-blue-light hover:text-white transition-colors"
+                          onClick={() => handleColumnSort('unitCode')}
+                          title="Click to sort"
+                        >
+                          Unit Code {columnSort.column === 'unitCode' && (columnSort.direction === 'asc' ? '↑' : '↓')}
+                        </th>
+
+                        {/* Unit Name Header */}
+                        <th
+                          className="px-4 py-3 text-left font-bold text-brand-blue w-1/4 cursor-pointer hover:bg-brand-blue-light hover:text-white transition-colors"
+                          onClick={() => handleColumnSort('unitName')}
+                          title="Click to sort"
+                        >
+                          Unit Name {columnSort.column === 'unitName' && (columnSort.direction === 'asc' ? '↑' : '↓')}
+                        </th>
+
+                        {/* Tower/Area Header */}
+                        <th
+                          className="px-4 py-3 text-left font-bold text-brand-blue w-1/6 cursor-pointer hover:bg-brand-blue-light hover:text-white transition-colors"
+                          onClick={() => handleColumnSort('tower')}
+                          title="Click to sort"
+                        >
+                          Tower/Area {columnSort.column === 'tower' && (columnSort.direction === 'asc' ? '↑' : '↓')}
+                        </th>
+
+                        {/* Floor/Block Header */}
+                        <th
+                          className="px-4 py-3 text-left font-bold text-brand-blue w-1/6 cursor-pointer hover:bg-brand-blue-light hover:text-white transition-colors"
+                          onClick={() => handleColumnSort('floor')}
+                          title="Click to sort"
+                        >
+                          Floor/Block {columnSort.column === 'floor' && (columnSort.direction === 'asc' ? '↑' : '↓')}
+                        </th>
+
+                        {/* Tenant Header */}
+                        <th
+                          className="px-4 py-3 text-left font-bold text-brand-blue w-1/5 cursor-pointer hover:bg-brand-blue-light hover:text-white transition-colors"
+                          onClick={() => handleColumnSort('tenant')}
+                          title="Click to sort"
+                        >
+                          Tenant {columnSort.column === 'tenant' && (columnSort.direction === 'asc' ? '↑' : '↓')}
+                        </th>
+
+                        {/* Landlord Header */}
+                        <th
+                          className="px-4 py-3 text-left font-bold text-brand-blue w-1/5 cursor-pointer hover:bg-brand-blue-light hover:text-white transition-colors"
+                          onClick={() => handleColumnSort('landlord')}
+                          title="Click to sort"
+                        >
+                          Landlord {columnSort.column === 'landlord' && (columnSort.direction === 'asc' ? '↑' : '↓')}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {allPropertyUnits[property.id].map((unit) => (
+                      {sortUnitsByColumn(allPropertyUnits[property.id]).map((unit) => (
                         <tr key={unit.id} className="border-b border-gray-200 hover:bg-brand-blue-lightest transition-colors">
+                          {/* Checkbox Column */}
+                          <td className="px-3 py-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedUnits.has(unit.id)}
+                              onChange={(e) => {
+                                const newSelected = new Set(selectedUnits);
+                                if (e.target.checked) {
+                                  newSelected.add(unit.id);
+                                } else {
+                                  newSelected.delete(unit.id);
+                                }
+                                setSelectedUnits(newSelected);
+                              }}
+                              className="w-4 h-4 cursor-pointer"
+                            />
+                          </td>
+
+                          {/* Unit Code - Read Only */}
+                          <td className="px-4 py-3 font-semibold text-brand-blue w-20">
+                            {extractUnitCode(unit.name)}
+                          </td>
+
                           {/* Unit Name - Editable */}
                           <td
-                            className="px-4 py-3 font-medium text-brand-dark cursor-pointer hover:bg-blue-50"
+                            className="px-4 py-3 font-medium text-brand-dark cursor-pointer hover:bg-blue-100"
                             onClick={() => {
                               setEditingCell({ unitId: unit.id, field: 'name' });
                               setEditingValue(unit.name);
@@ -466,14 +582,14 @@ export default function CMTPropertiesPage() {
                             )}
                           </td>
 
-                          {/* Tower/Block - Read Only (Extracted from Unit Name) */}
+                          {/* Tower/Area - Read Only */}
                           <td className="px-4 py-3 font-semibold text-brand-blue bg-brand-blue-lightest rounded">
                             {extractTower(unit.name)}
                           </td>
 
-                          {/* Floor - Editable */}
+                          {/* Floor/Block - Editable */}
                           <td
-                            className="px-4 py-3 text-brand-gray cursor-pointer hover:bg-blue-50"
+                            className="px-4 py-3 text-brand-gray cursor-pointer hover:bg-blue-100"
                             onClick={() => {
                               setEditingCell({ unitId: unit.id, field: 'floor' });
                               setEditingValue(unit.floor?.toString() || '');
@@ -497,12 +613,12 @@ export default function CMTPropertiesPage() {
                             )}
                           </td>
 
-                          {/* Tenant - Placeholder for future */}
+                          {/* Tenant */}
                           <td className="px-4 py-3 text-brand-gray italic">
                             {unit.tenant ? `${unit.tenant.firstName} ${unit.tenant.lastName}` : '—'}
                           </td>
 
-                          {/* Landlord - Placeholder for future */}
+                          {/* Landlord */}
                           <td className="px-4 py-3 text-brand-gray italic">
                             {unit.landlord ? unit.landlord.name : '—'}
                           </td>
@@ -947,6 +1063,45 @@ export default function CMTPropertiesPage() {
                 className="flex-1 px-4 py-2 rounded-lg bg-gray-200 text-gray-900"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 space-y-4">
+            <h2 className="text-lg font-bold text-red-600">Delete Units?</h2>
+            <p className="text-gray-700">
+              Are you sure you want to delete <span className="font-semibold">{selectedUnits.size}</span> unit{selectedUnits.size !== 1 ? 's' : ''}? This action cannot be undone.
+            </p>
+            <div className="max-h-48 overflow-y-auto bg-gray-50 rounded p-3">
+              <p className="text-xs text-gray-600 font-semibold mb-2">Units to be deleted:</p>
+              <ul className="space-y-1 text-sm text-gray-700">
+                {Array.from(selectedUnits).map(unitId => {
+                  const unit = Object.values(allPropertyUnits)
+                    .flat()
+                    .find(u => u.id === unitId);
+                  return <li key={unitId}>• {unit?.name || 'Unknown unit'}</li>;
+                })}
+              </ul>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  handleBulkDelete(selectedPropertyId);
+                }}
+                className="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium"
+              >
+                Delete {selectedUnits.size} Unit{selectedUnits.size !== 1 ? 's' : ''}
+              </button>
+              <button
+                onClick={() => setShowBulkDeleteModal(false)}
+                className="flex-1 px-4 py-2 rounded-lg bg-gray-200 text-gray-900 hover:bg-gray-300 font-medium"
+              >
+                Cancel
               </button>
             </div>
           </div>
