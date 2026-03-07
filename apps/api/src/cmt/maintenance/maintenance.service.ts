@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
 import { UpdateMaintenanceDto } from './dto/update-maintenance.dto';
-import { MaintenanceStatus } from '../../common/enums/maintenance-status.enum';
+import { MaintenanceStatus } from '@prisma/client';
 import { Role } from '../../common/enums/role.enum';
 
 @Injectable()

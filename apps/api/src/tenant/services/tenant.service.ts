@@ -8,6 +8,7 @@ export class TenantService {
   private async getTenantProfileByUserId(userId: string) {
     const tenant = await this.prisma.tenantProfile.findUnique({
       where: { userId },
+      include: { unit: true },
     });
     if (!tenant) throw new NotFoundException('Tenant profile not found');
     return tenant;
