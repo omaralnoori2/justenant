@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -131,85 +131,101 @@ export class CmtService {
   }
 }
 
+
   async createTenant(cmtUserId: string, data: { email: string; firstName: string; lastName: string; phone: string; password: string }) {
-    const cmt = await this.getCmtByUserId(cmtUserId);
-    const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
-    if (existing) throw new Error('Email already exists');
+    try {
+      const cmt = await this.getCmtByUserId(cmtUserId);
+      const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+      if (existing) throw new BadRequestException('Email already exists');
 
-    const bcrypt = require('bcryptjs');
-    const passwordHash = await bcrypt.hash(data.password, 10);
+      const bcrypt = require('bcryptjs');
+      const passwordHash = await bcrypt.hash(data.password, 10);
 
-    return this.prisma.user.create({
-      data: {
-        email: data.email,
-        passwordHash,
-        role: 'TENANT',
-        status: 'ACTIVE',
-        tenantProfile: {
-          create: {
-            firstName: data.firstName,
-            lastName: data.lastName,
-            phone: data.phone,
-            cmtId: cmt.id,
+      return await this.prisma.user.create({
+        data: {
+          email: data.email,
+          passwordHash,
+          role: 'TENANT',
+          status: 'ACTIVE',
+          tenantProfile: {
+            create: {
+              firstName: data.firstName,
+              lastName: data.lastName,
+              phone: data.phone,
+              cmtId: cmt.id,
+            },
           },
         },
-      },
-      select: { id: true, email: true, role: true, status: true },
-    });
+        include: { tenantProfile: true },
+      });
+    } catch (error) {
+      console.error('Error creating tenant:', error);
+      throw error;
+    }
   }
 
   async createLandlord(cmtUserId: string, data: { email: string; firstName: string; lastName: string; phone: string; password: string }) {
-    const cmt = await this.getCmtByUserId(cmtUserId);
-    const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
-    if (existing) throw new Error('Email already exists');
+    try {
+      const cmt = await this.getCmtByUserId(cmtUserId);
+      const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+      if (existing) throw new BadRequestException('Email already exists');
 
-    const bcrypt = require('bcryptjs');
-    const passwordHash = await bcrypt.hash(data.password, 10);
+      const bcrypt = require('bcryptjs');
+      const passwordHash = await bcrypt.hash(data.password, 10);
 
-    return this.prisma.user.create({
-      data: {
-        email: data.email,
-        passwordHash,
-        role: 'LANDLORD',
-        status: 'ACTIVE',
-        landlordProfile: {
-          create: {
-            firstName: data.firstName,
-            lastName: data.lastName,
-            phone: data.phone,
-            cmtId: cmt.id,
+      return await this.prisma.user.create({
+        data: {
+          email: data.email,
+          passwordHash,
+          role: 'LANDLORD',
+          status: 'ACTIVE',
+          landlordProfile: {
+            create: {
+              firstName: data.firstName,
+              lastName: data.lastName,
+              phone: data.phone,
+              cmtId: cmt.id,
+            },
           },
         },
-      },
-      select: { id: true, email: true, role: true, status: true },
-    });
+        include: { landlordProfile: true },
+      });
+    } catch (error) {
+      console.error('Error creating landlord:', error);
+      throw error;
+    }
   }
 
   async createServiceProvider(cmtUserId: string, data: { email: string; firstName: string; lastName: string; phone: string; password: string; serviceType?: string }) {
-    const cmt = await this.getCmtByUserId(cmtUserId);
-    const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
-    if (existing) throw new Error('Email already exists');
+    try {
+      const cmt = await this.getCmtByUserId(cmtUserId);
+      const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+      if (existing) throw new BadRequestException('Email already exists');
 
-    const bcrypt = require('bcryptjs');
-    const passwordHash = await bcrypt.hash(data.password, 10);
+      const bcrypt = require('bcryptjs');
+      const passwordHash = await bcrypt.hash(data.password, 10);
 
-    return this.prisma.user.create({
-      data: {
-        email: data.email,
-        passwordHash,
-        role: 'SERVICE_PROVIDER',
-        status: 'ACTIVE',
-        spProfile: {
-          create: {
-            firstName: data.firstName,
-            lastName: data.lastName,
-            phone: data.phone,
-            serviceType: data.serviceType,
-            cmtId: cmt.id,
+      return await this.prisma.user.create({
+        data: {
+          email: data.email,
+          passwordHash,
+          role: 'SERVICE_PROVIDER',
+          status: 'ACTIVE',
+          spProfile: {
+            create: {
+              firstName: data.firstName,
+              lastName: data.lastName,
+              phone: data.phone,
+              serviceType: data.serviceType || 'General',
+              cmtId: cmt.id,
+            },
           },
         },
-      },
-      select: { id: true, email: true, role: true, status: true },
-    });
+        include: { spProfile: true },
+      });
+    } catch (error) {
+      console.error('Error creating service provider:', error);
+      throw error;
+    }
   }
 }
