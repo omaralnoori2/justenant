@@ -23,8 +23,11 @@ export default function CMTPropertiesPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showGeneratorModal, setShowGeneratorModal] = useState(false);
+  const [showUnitsModal, setShowUnitsModal] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [units, setUnits] = useState<Unit[]>([]);
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+  const [editingUnitName, setEditingUnitName] = useState('');
 
   // Form states
   const [formData, setFormData] = useState({ name: '', address: '' });
@@ -81,10 +84,31 @@ export default function CMTPropertiesPage() {
     try {
       const res = await api.get(`/cmt/properties/${propertyId}/units`);
       setUnits(res.data);
+      setShowUnitsModal(true);
     } catch (err) {
       console.error('Failed to fetch units', err);
     }
   };
+
+  const handleEditUnit = (unit: Unit) => {
+    setEditingUnitId(unit.id);
+    setEditingUnitName(unit.name);
+  };
+
+  const handleSaveUnitName = async (unitId: string) => {
+    if (!editingUnitName.trim()) {
+      alert('Unit name cannot be empty');
+      return;
+    }
+    try {
+      await api.patch(`/cmt/properties/${selectedPropertyId}/units/${unitId}`, { name: editingUnitName });
+      setUnits(units.map(u => u.id === unitId ? { ...u, name: editingUnitName } : u));
+      setEditingUnitId(null);
+    } catch (err) {
+      alert('Failed to update unit name');
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -120,9 +144,9 @@ export default function CMTPropertiesPage() {
                   Generate Units
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setSelectedPropertyId(property.id);
-                    fetchUnits(property.id);
+                    await fetchUnits(property.id);
                   }}
                   className="text-sm px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
                 >
@@ -223,6 +247,93 @@ export default function CMTPropertiesPage() {
                 className="flex-1 px-4 py-2 rounded-lg bg-gray-200 text-gray-900"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Units List Modal */}
+      {showUnitsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 my-8 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">Units ({units.length})</h2>
+              <button
+                onClick={() => setShowUnitsModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            {units.length === 0 ? (
+              <p className="text-gray-500 text-sm text-center py-8">No units generated yet</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Unit Name</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Floor</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {units.map((unit) => (
+                      <tr key={unit.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          {editingUnitId === unit.id ? (
+                            <input
+                              type="text"
+                              value={editingUnitName}
+                              onChange={(e) => setEditingUnitName(e.target.value)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded"
+                              autoFocus
+                            />
+                          ) : (
+                            <span className="font-medium text-gray-900">{unit.name}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">{unit.floor || '—'}</td>
+                        <td className="px-4 py-3 space-x-2">
+                          {editingUnitId === unit.id ? (
+                            <>
+                              <button
+                                onClick={() => handleSaveUnitName(unit.id)}
+                                className="text-sm px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingUnitId(null)}
+                                className="text-sm px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => handleEditUnit(unit)}
+                              className="text-sm px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
+                            >
+                              Edit
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowUnitsModal(false)}
+                className="flex-1 px-4 py-2 rounded-lg bg-gray-200 text-gray-900"
+              >
+                Close
               </button>
             </div>
           </div>

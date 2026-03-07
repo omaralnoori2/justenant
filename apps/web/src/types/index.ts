@@ -41,3 +41,25 @@ export interface SubscriptionTier {
   maxProperties: number;
   pricePerMonth: number;
 }
+
+export interface Property {
+  id: string;
+  name: string;
+  address: string;
+  type?: string;
+  cmtId?: string;
+  landlordId?: string;
+  unitCount?: number;
+  createdAt?: string;
+}
+
+export interface Unit {
+  id: string;
+  propertyId: string;
+  name: string;
+  floor?: number;
+  unitNumber?: number;
+  isOccupied?: boolean;
+  tenantId?: string;
+  createdAt?: string;
+}
