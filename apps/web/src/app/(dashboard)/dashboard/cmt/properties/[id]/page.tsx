@@ -31,7 +31,7 @@ export default function PropertyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [towerCount, setTowerCount] = useState(10);
-  const [floorCount, setFloorCount] = useState(30);
+  const [floors: floorCount, setFloorCount] = useState(30);
   const [unitsPerFloor, setUnitsPerFloor] = useState(9);
 
   useEffect(() => {
@@ -57,8 +57,9 @@ export default function PropertyDetailPage() {
     setGenerating(true);
     try {
       const res = await api.post(`/cmt/properties/${propertyId}/generate-units`, {
-        towerCount,
-        floorCount,
+        mode: "tower",
+        towers: towerCount,
+        floors: floorCount,
         unitsPerFloor,
       });
       alert(`Generated ${res.data.generated} units!`);
