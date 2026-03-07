@@ -17,10 +17,13 @@ interface Unit {
   id: string;
   name: string;
   floor?: number;
+  tenant?: { id: string; firstName: string; lastName: string };
+  landlord?: { id: string; name: string };
 }
 
-type ViewType = 'kanban' | 'list';
+type ViewType = 'kanban' | 'spreadsheet';
 type SortBy = 'name-asc' | 'name-desc' | 'units-high' | 'units-low';
+type EditingCell = { unitId: string; field: 'name' | 'floor' } | null;
 
 export default function CMTPropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
@@ -34,8 +37,12 @@ export default function CMTPropertiesPage() {
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const [editingUnitName, setEditingUnitName] = useState('');
 
+  // Spreadsheet editing state
+  const [editingCell, setEditingCell] = useState<EditingCell>(null);
+  const [editingValue, setEditingValue] = useState('');
+
   // View and filter states
-  const [viewType, setViewType] = useState<ViewType>('list');
+  const [viewType, setViewType] = useState<ViewType>('spreadsheet');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('name-asc');
 
@@ -158,6 +165,38 @@ export default function CMTPropertiesPage() {
     }
   };
 
+  // Save cell in spreadsheet view
+  const handleSaveCell = async (propertyId: string, unitId: string, field: 'name' | 'floor') => {
+    if (!editingValue.trim() && field === 'name') {
+      alert('Unit name cannot be empty');
+      return;
+    }
+
+    try {
+      const updateData: Record<string, any> = {};
+      if (field === 'name') {
+        updateData.name = editingValue;
+      } else if (field === 'floor') {
+        updateData.floor = parseInt(editingValue) || 0;
+      }
+
+      await api.patch(`/cmt/properties/${propertyId}/units/${unitId}`, updateData);
+
+      // Update local state
+      setAllPropertyUnits(prev => ({
+        ...prev,
+        [propertyId]: prev[propertyId].map(u =>
+          u.id === unitId ? { ...u, [field]: field === 'floor' ? parseInt(editingValue) : editingValue } : u
+        )
+      }));
+
+      setEditingCell(null);
+      setEditingValue('');
+    } catch (err) {
+      alert(`Failed to update unit ${field}`);
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -206,14 +245,14 @@ export default function CMTPropertiesPage() {
             <label className="block text-sm font-medium text-brand-dark mb-1">View</label>
             <div className="flex gap-2">
               <button
-                onClick={() => setViewType('list')}
+                onClick={() => setViewType('spreadsheet')}
                 className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  viewType === 'list'
+                  viewType === 'spreadsheet'
                     ? 'bg-brand-blue text-white'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                📋 List
+                📊 Sheet
               </button>
               <button
                 onClick={() => setViewType('kanban')}
@@ -223,7 +262,7 @@ export default function CMTPropertiesPage() {
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                📊 Kanban
+                📇 Kanban
               </button>
             </div>
           </div>
@@ -241,63 +280,126 @@ export default function CMTPropertiesPage() {
             {properties.length === 0 ? 'No properties yet. Create one to get started.' : 'No properties match your search.'}
           </p>
         </div>
-      ) : viewType === 'list' ? (
-        /* LIST VIEW */
-        <div className="space-y-4">
+      ) : viewType === 'spreadsheet' ? (
+        /* SPREADSHEET VIEW - Google Sheet Style */
+        <div className="space-y-6">
           {filteredAndSortedProperties.map((property) => (
             <div key={property.id} className="card border-l-4 border-l-brand-blue">
               {/* Property Header */}
-              <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b-2 border-brand-blue">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-brand-blue">{property.name}</h3>
+                  <h3 className="text-lg font-bold text-brand-blue">{property.name}</h3>
                   <p className="text-sm text-brand-gray mt-1">{property.address}</p>
                 </div>
-                <span className="px-3 py-1 rounded-full bg-brand-blue-lightest text-brand-blue font-semibold text-sm">
-                  {allPropertyUnits[property.id]?.length || 0} units
-                </span>
+                <div className="flex gap-2">
+                  <span className="px-3 py-1 rounded-full bg-brand-blue-lightest text-brand-blue font-semibold text-sm">
+                    {allPropertyUnits[property.id]?.length || 0} units
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSelectedPropertyId(property.id);
+                      setShowGeneratorModal(true);
+                    }}
+                    className="text-sm px-3 py-1 rounded-lg bg-brand-blue text-white hover:bg-brand-blue-light transition-colors font-medium"
+                  >
+                    + Generate
+                  </button>
+                </div>
               </div>
 
-              {/* Property Actions */}
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={() => {
-                    setSelectedPropertyId(property.id);
-                    setShowGeneratorModal(true);
-                  }}
-                  className="text-sm px-3 py-2 rounded-lg bg-brand-blue-lightest text-brand-blue hover:bg-brand-blue-light transition-colors font-medium"
-                >
-                  🏗️ Generate Units
-                </button>
-                <button
-                  onClick={async () => {
-                    setSelectedPropertyId(property.id);
-                    await fetchUnits(property.id);
-                  }}
-                  className="text-sm px-3 py-2 rounded-lg bg-gray-100 text-brand-dark hover:bg-gray-200 transition-colors font-medium"
-                >
-                  ⚙️ Edit Units
-                </button>
-              </div>
-
-              {/* Units List */}
+              {/* Spreadsheet Table */}
               {allPropertyUnits[property.id] && allPropertyUnits[property.id].length > 0 ? (
-                <div className="mt-4">
-                  <p className="text-xs font-semibold text-brand-gray uppercase mb-3">Units</p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {allPropertyUnits[property.id].map((unit) => (
-                      <div
-                        key={unit.id}
-                        className="px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 hover:border-brand-blue hover:bg-brand-blue-lightest transition-colors"
-                      >
-                        <p className="text-xs font-medium text-brand-dark">{unit.name}</p>
-                        {unit.floor && <p className="text-xs text-brand-gray mt-1">Floor {unit.floor}</p>}
-                      </div>
-                    ))}
-                  </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-brand-blue-lightest border-b-2 border-brand-blue">
+                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/3">Unit Name</th>
+                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/6">Floor</th>
+                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/4">Tenant</th>
+                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/4">Landlord</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allPropertyUnits[property.id].map((unit) => (
+                        <tr key={unit.id} className="border-b border-gray-200 hover:bg-brand-blue-lightest transition-colors">
+                          {/* Unit Name - Editable */}
+                          <td
+                            className="px-4 py-3 font-medium text-brand-dark cursor-pointer hover:bg-blue-50"
+                            onClick={() => {
+                              setEditingCell({ unitId: unit.id, field: 'name' });
+                              setEditingValue(unit.name);
+                            }}
+                          >
+                            {editingCell?.unitId === unit.id && editingCell?.field === 'name' ? (
+                              <input
+                                autoFocus
+                                type="text"
+                                value={editingValue}
+                                onChange={(e) => setEditingValue(e.target.value)}
+                                onBlur={() => handleSaveCell(property.id, unit.id, 'name')}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveCell(property.id, unit.id, 'name');
+                                  if (e.key === 'Escape') setEditingCell(null);
+                                }}
+                                className="w-full px-2 py-1 border-2 border-brand-blue rounded bg-white focus:outline-none"
+                              />
+                            ) : (
+                              <span>{unit.name}</span>
+                            )}
+                          </td>
+
+                          {/* Floor - Editable */}
+                          <td
+                            className="px-4 py-3 text-brand-gray cursor-pointer hover:bg-blue-50"
+                            onClick={() => {
+                              setEditingCell({ unitId: unit.id, field: 'floor' });
+                              setEditingValue(unit.floor?.toString() || '');
+                            }}
+                          >
+                            {editingCell?.unitId === unit.id && editingCell?.field === 'floor' ? (
+                              <input
+                                autoFocus
+                                type="number"
+                                value={editingValue}
+                                onChange={(e) => setEditingValue(e.target.value)}
+                                onBlur={() => handleSaveCell(property.id, unit.id, 'floor')}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveCell(property.id, unit.id, 'floor');
+                                  if (e.key === 'Escape') setEditingCell(null);
+                                }}
+                                className="w-full px-2 py-1 border-2 border-brand-blue rounded bg-white focus:outline-none"
+                              />
+                            ) : (
+                              <span>{unit.floor || '—'}</span>
+                            )}
+                          </td>
+
+                          {/* Tenant - Placeholder for future */}
+                          <td className="px-4 py-3 text-brand-gray italic">
+                            {unit.tenant ? `${unit.tenant.firstName} ${unit.tenant.lastName}` : '—'}
+                          </td>
+
+                          {/* Landlord - Placeholder for future */}
+                          <td className="px-4 py-3 text-brand-gray italic">
+                            {unit.landlord ? unit.landlord.name : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg text-center">
-                  <p className="text-sm text-brand-gray">No units generated yet</p>
+                <div className="p-8 text-center bg-gray-50 rounded-lg">
+                  <p className="text-brand-gray">No units generated yet</p>
+                  <button
+                    onClick={() => {
+                      setSelectedPropertyId(property.id);
+                      setShowGeneratorModal(true);
+                    }}
+                    className="mt-3 px-4 py-2 rounded-lg bg-brand-blue text-white hover:bg-brand-blue-light transition-colors font-medium"
+                  >
+                    Generate Units
+                  </button>
                 </div>
               )}
             </div>
