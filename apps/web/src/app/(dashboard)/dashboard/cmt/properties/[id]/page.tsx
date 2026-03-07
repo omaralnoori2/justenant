@@ -31,7 +31,7 @@ export default function PropertyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [towerCount, setTowerCount] = useState(10);
-  const [floors: floorCount, setFloorCount] = useState(30);
+  const [floorCount, setFloorCount] = useState(30);
   const [unitsPerFloor, setUnitsPerFloor] = useState(9);
 
   useEffect(() => {
