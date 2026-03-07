@@ -30,6 +30,7 @@ export default function CMTPropertiesPage() {
   const [showUnitsModal, setShowUnitsModal] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [units, setUnits] = useState<Unit[]>([]);
+  const [allPropertyUnits, setAllPropertyUnits] = useState<Record<string, Unit[]>>({});
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const [editingUnitName, setEditingUnitName] = useState('');
 
@@ -55,6 +56,19 @@ export default function CMTPropertiesPage() {
     try {
       const res = await api.get('/cmt/properties');
       setProperties(res.data);
+
+      // Fetch all units for all properties
+      const unitsMap: Record<string, Unit[]> = {};
+      for (const property of res.data) {
+        try {
+          const unitsRes = await api.get(`/cmt/properties/${property.id}/units`);
+          unitsMap[property.id] = unitsRes.data || [];
+        } catch (err) {
+          console.error(`Failed to fetch units for property ${property.id}`, err);
+          unitsMap[property.id] = [];
+        }
+      }
+      setAllPropertyUnits(unitsMap);
     } catch (err) {
       console.error('Failed to fetch properties', err);
     } finally {
@@ -229,50 +243,65 @@ export default function CMTPropertiesPage() {
         </div>
       ) : viewType === 'list' ? (
         /* LIST VIEW */
-        <div className="card overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-brand-blue-lightest border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-brand-blue">Property Name</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-brand-blue">Address</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-brand-blue">Units</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-brand-blue">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {filteredAndSortedProperties.map((property) => (
-                <tr key={property.id} className="hover:bg-brand-blue-lightest transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-brand-dark">{property.name}</td>
-                  <td className="px-6 py-4 text-sm text-brand-gray">{property.address}</td>
-                  <td className="px-6 py-4 text-sm text-brand-dark">
-                    <span className="px-3 py-1 rounded-full bg-brand-blue-lightest text-brand-blue font-semibold">
-                      {property.unitCount || 0}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm space-x-2">
-                    <button
-                      onClick={() => {
-                        setSelectedPropertyId(property.id);
-                        setShowGeneratorModal(true);
-                      }}
-                      className="text-sm px-3 py-2 rounded-lg bg-brand-blue-lightest text-brand-blue hover:bg-brand-blue-light transition-colors"
-                    >
-                      Generate
-                    </button>
-                    <button
-                      onClick={async () => {
-                        setSelectedPropertyId(property.id);
-                        await fetchUnits(property.id);
-                      }}
-                      className="text-sm px-3 py-2 rounded-lg bg-gray-100 text-brand-dark hover:bg-gray-200 transition-colors"
-                    >
-                      View Units
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-4">
+          {filteredAndSortedProperties.map((property) => (
+            <div key={property.id} className="card border-l-4 border-l-brand-blue">
+              {/* Property Header */}
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-brand-blue">{property.name}</h3>
+                  <p className="text-sm text-brand-gray mt-1">{property.address}</p>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-brand-blue-lightest text-brand-blue font-semibold text-sm">
+                  {allPropertyUnits[property.id]?.length || 0} units
+                </span>
+              </div>
+
+              {/* Property Actions */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => {
+                    setSelectedPropertyId(property.id);
+                    setShowGeneratorModal(true);
+                  }}
+                  className="text-sm px-3 py-2 rounded-lg bg-brand-blue-lightest text-brand-blue hover:bg-brand-blue-light transition-colors font-medium"
+                >
+                  🏗️ Generate Units
+                </button>
+                <button
+                  onClick={async () => {
+                    setSelectedPropertyId(property.id);
+                    await fetchUnits(property.id);
+                  }}
+                  className="text-sm px-3 py-2 rounded-lg bg-gray-100 text-brand-dark hover:bg-gray-200 transition-colors font-medium"
+                >
+                  ⚙️ Edit Units
+                </button>
+              </div>
+
+              {/* Units List */}
+              {allPropertyUnits[property.id] && allPropertyUnits[property.id].length > 0 ? (
+                <div className="mt-4">
+                  <p className="text-xs font-semibold text-brand-gray uppercase mb-3">Units</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {allPropertyUnits[property.id].map((unit) => (
+                      <div
+                        key={unit.id}
+                        className="px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 hover:border-brand-blue hover:bg-brand-blue-lightest transition-colors"
+                      >
+                        <p className="text-xs font-medium text-brand-dark">{unit.name}</p>
+                        {unit.floor && <p className="text-xs text-brand-gray mt-1">Floor {unit.floor}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg text-center">
+                  <p className="text-sm text-brand-gray">No units generated yet</p>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       ) : (
         /* KANBAN VIEW */
@@ -280,20 +309,49 @@ export default function CMTPropertiesPage() {
           {filteredAndSortedProperties.map((property) => (
             <div
               key={property.id}
-              className="card hover:shadow-lg transition-shadow border-l-4 border-l-brand-blue"
+              className="card hover:shadow-lg transition-shadow border-l-4 border-l-brand-blue flex flex-col"
             >
-              <div className="flex items-start justify-between mb-2">
-                <h3 className="font-semibold text-brand-blue text-lg">{property.name}</h3>
-                <span className="px-2 py-1 rounded-full bg-brand-blue-lightest text-brand-blue text-xs font-semibold">
-                  {property.unitCount || 0} units
+              <div className="flex items-start justify-between mb-3 pb-3 border-b border-gray-200">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-brand-blue text-lg">{property.name}</h3>
+                  <p className="text-xs text-brand-gray mt-1">{property.address}</p>
+                </div>
+                <span className="px-2 py-1 rounded-full bg-brand-blue-lightest text-brand-blue text-xs font-semibold whitespace-nowrap ml-2">
+                  {allPropertyUnits[property.id]?.length || 0}
                 </span>
               </div>
-              <p className="text-sm text-brand-gray mb-4">{property.address}</p>
 
               {property.landlord && (
-                <p className="text-xs text-brand-gray mb-4">
+                <p className="text-xs text-brand-gray mb-3">
                   👤 <span className="font-medium">{property.landlord.name}</span>
                 </p>
+              )}
+
+              {/* Units Grid in Kanban */}
+              {allPropertyUnits[property.id] && allPropertyUnits[property.id].length > 0 ? (
+                <div className="mb-4 flex-1">
+                  <p className="text-xs font-semibold text-brand-gray uppercase mb-2">Units</p>
+                  <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto">
+                    {allPropertyUnits[property.id].slice(0, 8).map((unit) => (
+                      <div
+                        key={unit.id}
+                        className="px-2 py-1 rounded text-xs bg-brand-blue-lightest text-brand-dark font-medium truncate"
+                        title={unit.name}
+                      >
+                        {unit.name}
+                      </div>
+                    ))}
+                    {allPropertyUnits[property.id].length > 8 && (
+                      <div className="px-2 py-1 rounded text-xs bg-gray-100 text-brand-gray font-medium">
+                        +{allPropertyUnits[property.id].length - 8} more
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-4 flex-1 flex items-center justify-center">
+                  <p className="text-xs text-brand-gray italic">No units yet</p>
+                </div>
               )}
 
               <div className="space-y-2">
@@ -313,7 +371,7 @@ export default function CMTPropertiesPage() {
                   }}
                   className="w-full text-sm px-3 py-2 rounded-lg bg-gray-100 text-brand-dark hover:bg-gray-200 transition-colors font-medium"
                 >
-                  👁️ View Units
+                  ⚙️ Edit Units
                 </button>
               </div>
             </div>
