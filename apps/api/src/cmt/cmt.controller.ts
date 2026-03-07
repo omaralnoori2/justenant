@@ -53,17 +53,26 @@ export class CmtController {
   }
 
   @Post('tenants')
-  createTenant(@CurrentUser() user: User, @Body() data: any) {
+  createTenant(
+    @CurrentUser() user: User,
+    @Body() data: { email: string; password: string; firstName: string; lastName: string; phone: string },
+  ) {
     return this.cmtService.createTenant(user.id, data);
   }
 
   @Post('landlords')
-  createLandlord(@CurrentUser() user: User, @Body() data: any) {
+  createLandlord(
+    @CurrentUser() user: User,
+    @Body() data: { email: string; password: string; firstName: string; lastName: string; phone: string },
+  ) {
     return this.cmtService.createLandlord(user.id, data);
   }
 
   @Post('service-providers')
-  createServiceProvider(@CurrentUser() user: User, @Body() data: any) {
+  createServiceProvider(
+    @CurrentUser() user: User,
+    @Body() data: { email: string; password: string; firstName: string; lastName: string; phone: string; serviceType: string },
+  ) {
     return this.cmtService.createServiceProvider(user.id, data);
   }
 }

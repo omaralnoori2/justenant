@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from '../common/enums/role.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class CmtService {
@@ -122,6 +123,115 @@ export class CmtService {
     });
   }
 
+  async createTenant(
+    cmtUserId: string,
+    data: { email: string; password: string; firstName: string; lastName: string; phone: string },
+  ) {
+    const cmt = await this.getCmtByUserId(cmtUserId);
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+    if (existingUser) throw new BadRequestException('Email already exists');
+
+    const passwordHash = await bcrypt.hash(data.password, 10);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: data.email,
+        passwordHash,
+        role: Role.TENANT,
+        status: UserStatus.ACTIVE,
+      },
+    });
+
+    const tenant = await this.prisma.tenantProfile.create({
+      data: {
+        userId: user.id,
+        cmtId: cmt.id,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+      },
+      include: { user: true },
+    });
+
+    return tenant;
+  }
+
+  async createLandlord(
+    cmtUserId: string,
+    data: { email: string; password: string; firstName: string; lastName: string; phone: string },
+  ) {
+    const cmt = await this.getCmtByUserId(cmtUserId);
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+    if (existingUser) throw new BadRequestException('Email already exists');
+
+    const passwordHash = await bcrypt.hash(data.password, 10);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: data.email,
+        passwordHash,
+        role: Role.LANDLORD,
+        status: UserStatus.ACTIVE,
+      },
+    });
+
+    const landlord = await this.prisma.landlordProfile.create({
+      data: {
+        userId: user.id,
+        cmtId: cmt.id,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+      },
+      include: { user: true },
+    });
+
+    return landlord;
+  }
+
+  async createServiceProvider(
+    cmtUserId: string,
+    data: { email: string; password: string; firstName: string; lastName: string; phone: string; serviceType: string },
+  ) {
+    const cmt = await this.getCmtByUserId(cmtUserId);
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+    if (existingUser) throw new BadRequestException('Email already exists');
+
+    const passwordHash = await bcrypt.hash(data.password, 10);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: data.email,
+        passwordHash,
+        role: Role.SERVICE_PROVIDER,
+        status: UserStatus.ACTIVE,
+      },
+    });
+
+    const sp = await this.prisma.serviceProviderProfile.create({
+      data: {
+        userId: user.id,
+        cmtId: cmt.id,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        serviceType: data.serviceType,
+      },
+      include: { user: true },
+    });
+
+    return sp;
+  }
+
   private async getCmtByUserId(userId: string) {
     const cmt = await this.prisma.cmtProfile.findUnique({
       where: { userId },
@@ -130,113 +240,5 @@ export class CmtService {
     if (!cmt) throw new NotFoundException('CMT profile not found');
     if (cmt.status !== 'APPROVED') throw new ForbiddenException('CMT account is not approved');
     return cmt;
-  }
-}
-
-
-  async createTenant(cmtUserId: string, data: { email: string; firstName: string; lastName: string; phone: string; password: string }) {
-    try {
-      const cmt = await this.getCmtByUserId(cmtUserId);
-      const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
-      if (existing) throw new BadRequestException('Email already exists');
-
-      const bcrypt = require('bcryptjs');
-      const passwordHash = await bcrypt.hash(data.password, 10);
-
-      const user = await this.prisma.user.create({
-        data: {
-          email: data.email,
-          passwordHash,
-          role: Role.TENANT,
-          status: UserStatus.ACTIVE,
-        },
-      });
-
-      await this.prisma.tenantProfile.create({
-        data: {
-          userId: user.id,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phone: data.phone,
-          cmtId: cmt.id,
-        },
-      });
-
-      return { id: user.id, email: user.email, role: user.role, status: user.status };
-    } catch (error) {
-      console.error('Error creating tenant:', error);
-      throw error;
-    }
-  }
-
-  async createLandlord(cmtUserId: string, data: { email: string; firstName: string; lastName: string; phone: string; password: string }) {
-    try {
-      const cmt = await this.getCmtByUserId(cmtUserId);
-      const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
-      if (existing) throw new BadRequestException('Email already exists');
-
-      const bcrypt = require('bcryptjs');
-      const passwordHash = await bcrypt.hash(data.password, 10);
-
-      const user = await this.prisma.user.create({
-        data: {
-          email: data.email,
-          passwordHash,
-          role: Role.LANDLORD,
-          status: UserStatus.ACTIVE,
-        },
-      });
-
-      await this.prisma.landlordProfile.create({
-        data: {
-          userId: user.id,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phone: data.phone,
-          cmtId: cmt.id,
-        },
-      });
-
-      return { id: user.id, email: user.email, role: user.role, status: user.status };
-    } catch (error) {
-      console.error('Error creating landlord:', error);
-      throw error;
-    }
-  }
-
-  async createServiceProvider(cmtUserId: string, data: { email: string; firstName: string; lastName: string; phone: string; password: string; serviceType?: string }) {
-    try {
-      const cmt = await this.getCmtByUserId(cmtUserId);
-      const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
-      if (existing) throw new BadRequestException('Email already exists');
-
-      const bcrypt = require('bcryptjs');
-      const passwordHash = await bcrypt.hash(data.password, 10);
-
-      const user = await this.prisma.user.create({
-        data: {
-          email: data.email,
-          passwordHash,
-          role: Role.SERVICE_PROVIDER,
-          status: UserStatus.ACTIVE,
-        },
-      });
-
-      await this.prisma.serviceProviderProfile.create({
-        data: {
-          userId: user.id,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phone: data.phone,
-          serviceType: data.serviceType || 'General',
-          cmtId: cmt.id,
-        },
-      });
-
-      return { id: user.id, email: user.email, role: user.role, status: user.status };
-    } catch (error) {
-      console.error('Error creating service provider:', error);
-      throw error;
-    }
   }
 }
