@@ -32,7 +32,12 @@ export default function CMTTenantsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Tenants</h1>
           <p className="text-gray-500 text-sm mt-1">Manage tenants in your properties</p>
         </div>
-        <button className="btn-primary">+ Add Tenant</button>
+      </div>
+
+      <div className="card bg-blue-50 border-l-4 border-l-blue-500">
+        <p className="text-sm text-blue-900">
+          💡 <strong>Note:</strong> Tenants register themselves through the tenant portal. Once registered, they appear here for approval.
+        </p>
       </div>
 
       <div className="card overflow-hidden">
@@ -58,7 +63,13 @@ export default function CMTTenantsPage() {
                   <td className="px-6 py-4 text-sm text-gray-600">{tenant.email}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{tenant.phoneNumber || '—'}</td>
                   <td className="px-6 py-4 text-sm">
-                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      tenant.status === 'ACTIVE' 
+                        ? 'bg-green-100 text-green-700'
+                        : tenant.status === 'PENDING'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
                       {tenant.status}
                     </span>
                   </td>
