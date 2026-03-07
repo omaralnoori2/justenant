@@ -51,7 +51,6 @@ export class CmtController {
   ) {
     return this.cmtService.rejectUser(user.id, targetId, reason);
   }
-}
 
   @Post('tenants')
   createTenant(@CurrentUser() user: User, @Body() data: any) {
