@@ -137,11 +137,17 @@ export class PropertiesService {
       }
     }
 
-    // Bulk create units
-    return this.prisma.unit.createMany({
-      data: units,
-      skipDuplicates: true,
+    // Delete existing units first to avoid conflicts
+    await this.prisma.unit.deleteMany({
+      where: { propertyId },
     });
+
+    // Bulk create units
+    const result = await this.prisma.unit.createMany({
+      data: units,
+    });
+
+    return { generated: result.count };
   }
 
   async getUnits(propertyId: string, userId: string) {
@@ -156,6 +162,13 @@ export class PropertiesService {
   async updateUnitName(propertyId: string, unitId: string, userId: string, name: string) {
     // Verify access
     await this.getProperty(propertyId, userId);
+
+    const unit = await this.prisma.unit.findUnique({
+      where: { id: unitId },
+    });
+    if (!unit || unit.propertyId !== propertyId) {
+      throw new ForbiddenException('Unit not found or access denied');
+    }
 
     return this.prisma.unit.update({
       where: { id: unitId },
