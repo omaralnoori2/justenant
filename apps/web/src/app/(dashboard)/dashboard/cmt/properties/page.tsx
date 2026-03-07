@@ -250,6 +250,18 @@ export default function CMTPropertiesPage() {
     return sorted;
   };
 
+  // Get paginated units for current page
+  const getPaginatedUnits = (units: Unit[]): Unit[] => {
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    const endIdx = startIdx + itemsPerPage;
+    return units.slice(startIdx, endIdx);
+  };
+
+  // Calculate total pages
+  const getTotalPages = (units: Unit[]): number => {
+    return Math.ceil(units.length / itemsPerPage);
+  };
+
   // Handle bulk delete
   const handleBulkDelete = async (propertyId: string) => {
     if (selectedUnits.size === 0) {
@@ -462,16 +474,21 @@ export default function CMTPropertiesPage() {
                         <th className="px-3 py-3 text-center font-bold text-brand-blue w-12">
                           <input
                             type="checkbox"
-                            checked={selectedUnits.size === allPropertyUnits[property.id].length && selectedUnits.size > 0}
+                            checked={getPaginatedUnits(sortUnitsByColumn(allPropertyUnits[property.id])).length > 0 && getPaginatedUnits(sortUnitsByColumn(allPropertyUnits[property.id])).every(u => selectedUnits.has(u.id))}
                             onChange={(e) => {
+                              const paginatedUnits = getPaginatedUnits(sortUnitsByColumn(allPropertyUnits[property.id]));
                               if (e.target.checked) {
-                                const allIds = new Set(allPropertyUnits[property.id].map(u => u.id));
-                                setSelectedUnits(allIds);
+                                const newSelected = new Set(selectedUnits);
+                                paginatedUnits.forEach(u => newSelected.add(u.id));
+                                setSelectedUnits(newSelected);
                               } else {
-                                setSelectedUnits(new Set());
+                                const newSelected = new Set(selectedUnits);
+                                paginatedUnits.forEach(u => newSelected.delete(u.id));
+                                setSelectedUnits(newSelected);
                               }
                             }}
                             className="w-4 h-4 cursor-pointer"
+                            title="Select all on this page"
                           />
                         </th>
 
@@ -531,7 +548,7 @@ export default function CMTPropertiesPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sortUnitsByColumn(allPropertyUnits[property.id]).map((unit) => (
+                      {getPaginatedUnits(sortUnitsByColumn(allPropertyUnits[property.id])).map((unit) => (
                         <tr key={unit.id} className="border-b border-gray-200 hover:bg-brand-blue-lightest transition-colors">
                           {/* Checkbox Column */}
                           <td className="px-3 py-3 text-center">
@@ -626,6 +643,96 @@ export default function CMTPropertiesPage() {
                       ))}
                     </tbody>
                   </table>
+
+                  {/* Pagination Controls */}
+                  <div className="mt-4 px-4 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg space-y-3">
+                    {/* Page Info and Navigation */}
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                      <div className="text-sm text-brand-gray font-medium">
+                        Showing {allPropertyUnits[property.id].length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}–{Math.min(currentPage * itemsPerPage, allPropertyUnits[property.id].length)} of {allPropertyUnits[property.id].length} units
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {/* Previous Button */}
+                        <button
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                          className="px-2 py-1 rounded text-sm border border-brand-gray disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 text-brand-dark font-medium"
+                        >
+                          ← Prev
+                        </button>
+
+                        {/* Page Numbers */}
+                        {Array.from({ length: getTotalPages(allPropertyUnits[property.id]) }, (_, i) => i + 1).map(page => {
+                          // Show first page, last page, current page, and neighbors
+                          const totalPages = getTotalPages(allPropertyUnits[property.id]);
+                          if (
+                            page === 1 ||
+                            page === totalPages ||
+                            page === currentPage ||
+                            page === currentPage - 1 ||
+                            page === currentPage + 1
+                          ) {
+                            return (
+                              <button
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={`px-2 py-1 rounded text-sm font-medium transition-colors ${
+                                  currentPage === page
+                                    ? 'bg-brand-blue text-white'
+                                    : 'border border-brand-gray hover:bg-gray-100 text-brand-dark'
+                                }`}
+                              >
+                                {page}
+                              </button>
+                            );
+                          } else if (
+                            (page === 2 && currentPage > 4) ||
+                            (page === totalPages - 1 && currentPage < totalPages - 3)
+                          ) {
+                            return (
+                              <span key={page} className="px-2 py-1 text-brand-gray">
+                                ...
+                              </span>
+                            );
+                          }
+                          return null;
+                        })}
+
+                        {/* Next Button */}
+                        <button
+                          onClick={() => setCurrentPage(p => Math.min(getTotalPages(allPropertyUnits[property.id]), p + 1))}
+                          disabled={currentPage === getTotalPages(allPropertyUnits[property.id])}
+                          className="px-2 py-1 rounded text-sm border border-brand-gray disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 text-brand-dark font-medium"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Rows Per Page Selector */}
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                      <div className="text-xs text-brand-gray font-medium">Rows per page:</div>
+                      <div className="flex gap-2">
+                        {[10, 30, 50, 100, 200, 500].map(size => (
+                          <button
+                            key={size}
+                            onClick={() => {
+                              setItemsPerPage(size);
+                              setCurrentPage(1);
+                            }}
+                            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                              itemsPerPage === size
+                                ? 'bg-brand-blue text-white'
+                                : 'border border-brand-gray hover:bg-gray-100 text-brand-dark'
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="p-8 text-center bg-gray-50 rounded-lg">
