@@ -8,8 +8,9 @@ import api from '@/lib/api';
 interface Tenant {
   id: string;
   email: string;
-  fullName: string;
-  phoneNumber: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
   status: string;
   createdAt: string;
 }
@@ -17,13 +18,42 @@ interface Tenant {
 export default function CMTTenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({ email: '', firstName: '', lastName: '', phone: '' });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    api.get('/cmt/tenants')
-      .then((r) => setTenants(r.data))
-      .catch(() => setTenants([]))
-      .finally(() => setLoading(false));
+    fetchTenants();
   }, []);
+
+  const fetchTenants = async () => {
+    try {
+      const r = await api.get('/cmt/tenants');
+      setTenants(r.data);
+    } catch (err) {
+      console.error('Failed to fetch tenants', err);
+      setTenants([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddTenant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await api.post('/cmt/tenants', formData);
+      alert('Tenant created successfully!');
+      setFormData({ email: '', firstName: '', lastName: '', phone: '' });
+      setShowForm(false);
+      fetchTenants();
+    } catch (err) {
+      console.error('Failed to create tenant', err);
+      alert('Failed to create tenant');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -32,13 +62,74 @@ export default function CMTTenantsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Tenants</h1>
           <p className="text-gray-500 text-sm mt-1">Manage tenants in your properties</p>
         </div>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="btn-primary"
+        >
+          {showForm ? 'Cancel' : '+ Add Tenant'}
+        </button>
       </div>
 
-      <div className="card bg-blue-50 border-l-4 border-l-blue-500">
-        <p className="text-sm text-blue-900">
-          💡 <strong>Note:</strong> Tenants register themselves through the tenant portal. Once registered, they appear here for approval.
-        </p>
-      </div>
+      {showForm && (
+        <div className="card border-l-4 border-l-blue-500">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Add New Tenant</h2>
+          <form onSubmit={handleAddTenant} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="input-field"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  className="input-field"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  className="input-field"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone (optional)</label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="input-field"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" disabled={submitting} className="btn-primary">
+                {submitting ? 'Creating...' : 'Create Tenant'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="card overflow-hidden">
         <table className="w-full">
@@ -59,16 +150,14 @@ export default function CMTTenantsPage() {
             ) : (
               tenants.map((tenant) => (
                 <tr key={tenant.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{tenant.fullName || '—'}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{tenant.firstName} {tenant.lastName}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{tenant.email}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{tenant.phoneNumber || '—'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{tenant.phone || '—'}</td>
                   <td className="px-6 py-4 text-sm">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                       tenant.status === 'ACTIVE' 
                         ? 'bg-green-100 text-green-700'
-                        : tenant.status === 'PENDING'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-gray-100 text-gray-700'
+                        : 'bg-yellow-100 text-yellow-700'
                     }`}>
                       {tenant.status}
                     </span>

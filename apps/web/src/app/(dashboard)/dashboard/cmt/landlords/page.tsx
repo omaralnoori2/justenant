@@ -8,8 +8,9 @@ import api from '@/lib/api';
 interface Landlord {
   id: string;
   email: string;
-  fullName: string;
-  phoneNumber: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
   status: string;
   createdAt: string;
 }
@@ -17,26 +18,118 @@ interface Landlord {
 export default function CMTLandlordsPage() {
   const [landlords, setLandlords] = useState<Landlord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({ email: '', firstName: '', lastName: '', phone: '' });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    api.get('/cmt/landlords')
-      .then((r) => setLandlords(r.data))
-      .catch(() => setLandlords([]))
-      .finally(() => setLoading(false));
+    fetchLandlords();
   }, []);
+
+  const fetchLandlords = async () => {
+    try {
+      const r = await api.get('/cmt/landlords');
+      setLandlords(r.data);
+    } catch (err) {
+      console.error('Failed to fetch landlords', err);
+      setLandlords([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddLandlord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await api.post('/cmt/landlords', formData);
+      alert('Landlord created successfully!');
+      setFormData({ email: '', firstName: '', lastName: '', phone: '' });
+      setShowForm(false);
+      fetchLandlords();
+    } catch (err) {
+      console.error('Failed to create landlord', err);
+      alert('Failed to create landlord');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Landlords</h1>
-        <p className="text-gray-500 text-sm mt-1">Manage property owners</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Landlords</h1>
+          <p className="text-gray-500 text-sm mt-1">Manage property owners</p>
+        </div>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="btn-primary"
+        >
+          {showForm ? 'Cancel' : '+ Add Landlord'}
+        </button>
       </div>
 
-      <div className="card bg-blue-50 border-l-4 border-l-blue-500">
-        <p className="text-sm text-blue-900">
-          💡 <strong>Note:</strong> Landlords register themselves through the landlord portal. Once registered, they appear here for approval.
-        </p>
-      </div>
+      {showForm && (
+        <div className="card border-l-4 border-l-blue-500">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Add New Landlord</h2>
+          <form onSubmit={handleAddLandlord} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="input-field"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  className="input-field"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  className="input-field"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone (optional)</label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="input-field"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" disabled={submitting} className="btn-primary">
+                {submitting ? 'Creating...' : 'Create Landlord'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="card overflow-hidden">
         <table className="w-full">
@@ -57,16 +150,14 @@ export default function CMTLandlordsPage() {
             ) : (
               landlords.map((landlord) => (
                 <tr key={landlord.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{landlord.fullName || '—'}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{landlord.firstName} {landlord.lastName}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{landlord.email}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{landlord.phoneNumber || '—'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{landlord.phone || '—'}</td>
                   <td className="px-6 py-4 text-sm">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                       landlord.status === 'ACTIVE' 
                         ? 'bg-green-100 text-green-700'
-                        : landlord.status === 'PENDING'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-gray-100 text-gray-700'
+                        : 'bg-yellow-100 text-yellow-700'
                     }`}>
                       {landlord.status}
                     </span>

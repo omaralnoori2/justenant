@@ -52,3 +52,19 @@ export class CmtController {
     return this.cmtService.rejectUser(user.id, targetId, reason);
   }
 }
+
+  @Post('tenants')
+  createTenant(@CurrentUser() user: User, @Body() data: any) {
+    return this.cmtService.createTenant(user.id, data);
+  }
+
+  @Post('landlords')
+  createLandlord(@CurrentUser() user: User, @Body() data: any) {
+    return this.cmtService.createLandlord(user.id, data);
+  }
+
+  @Post('service-providers')
+  createServiceProvider(@CurrentUser() user: User, @Body() data: any) {
+    return this.cmtService.createServiceProvider(user.id, data);
+  }
+}
