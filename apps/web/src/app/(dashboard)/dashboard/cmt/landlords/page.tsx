@@ -27,12 +27,15 @@ export default function CMTLandlordsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Landlords</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage property owners</p>
-        </div>
-        <button className="btn-primary">+ Add Landlord</button>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Landlords</h1>
+        <p className="text-gray-500 text-sm mt-1">Manage property owners</p>
+      </div>
+
+      <div className="card bg-blue-50 border-l-4 border-l-blue-500">
+        <p className="text-sm text-blue-900">
+          💡 <strong>Note:</strong> Landlords register themselves through the landlord portal. Once registered, they appear here for approval.
+        </p>
       </div>
 
       <div className="card overflow-hidden">
@@ -58,7 +61,13 @@ export default function CMTLandlordsPage() {
                   <td className="px-6 py-4 text-sm text-gray-600">{landlord.email}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{landlord.phoneNumber || '—'}</td>
                   <td className="px-6 py-4 text-sm">
-                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      landlord.status === 'ACTIVE' 
+                        ? 'bg-green-100 text-green-700'
+                        : landlord.status === 'PENDING'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
                       {landlord.status}
                     </span>
                   </td>

@@ -28,12 +28,15 @@ export default function CMTServiceProvidersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Service Providers</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage maintenance and repair contractors</p>
-        </div>
-        <button className="btn-primary">+ Add Provider</button>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Service Providers</h1>
+        <p className="text-gray-500 text-sm mt-1">Manage maintenance and repair contractors</p>
+      </div>
+
+      <div className="card bg-blue-50 border-l-4 border-l-blue-500">
+        <p className="text-sm text-blue-900">
+          💡 <strong>Note:</strong> Service providers register themselves through the provider portal. Once registered, they appear here for approval.
+        </p>
       </div>
 
       <div className="card overflow-hidden">
@@ -59,7 +62,13 @@ export default function CMTServiceProvidersPage() {
                   <td className="px-6 py-4 text-sm text-gray-600">{provider.email}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{provider.serviceCategory || '—'}</td>
                   <td className="px-6 py-4 text-sm">
-                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      provider.status === 'ACTIVE' 
+                        ? 'bg-green-100 text-green-700'
+                        : provider.status === 'PENDING'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
                       {provider.status}
                     </span>
                   </td>
