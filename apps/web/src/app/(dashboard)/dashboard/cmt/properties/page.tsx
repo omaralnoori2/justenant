@@ -24,6 +24,8 @@ interface Unit {
 type ViewType = 'kanban' | 'spreadsheet';
 type SortBy = 'name-asc' | 'name-desc' | 'units-high' | 'units-low';
 type EditingCell = { unitId: string; field: 'name' | 'floor' } | null;
+type ColumnSortType = 'unitName' | 'tower' | 'floor' | 'tenant' | 'landlord';
+type SortDirection = 'asc' | 'desc';
 
 export default function CMTPropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
@@ -45,6 +47,18 @@ export default function CMTPropertiesPage() {
   const [viewType, setViewType] = useState<ViewType>('spreadsheet');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('name-asc');
+
+  // Column sorting and pagination
+  const [columnSort, setColumnSort] = useState<{ column: ColumnSortType; direction: SortDirection }>({
+    column: 'unitName',
+    direction: 'asc',
+  });
+  const [itemsPerPage, setItemsPerPage] = useState(30);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Bulk operations
+  const [selectedUnits, setSelectedUnits] = useState<Set<string>>(new Set());
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   // Form states
   const [formData, setFormData] = useState({ name: '', address: '' });
@@ -170,14 +184,101 @@ export default function CMTPropertiesPage() {
 
   // Extract tower from unit name (e.g., "Flat 101 Tower A" -> "Tower A")
   const extractTower = (unitName: string): string => {
-    const match = unitName.match(/Tower\s+[A-Z]/);
+    const match = unitName.match(/Tower\s+[A-Z]|Area\s+[A-Z]/);
     return match ? match[0] : '—';
   };
 
   // Extract unit number from unit name (e.g., "Flat 101 Tower A" -> "Flat 101")
   const extractUnitNumber = (unitName: string): string => {
-    const parts = unitName.split(' Tower ');
+    const parts = unitName.split(/\s+Tower\s+|\s+Area\s+/);
     return parts[0] || unitName;
+  };
+
+  // Extract unit code (e.g., "Flat 101 Tower A" -> "A101")
+  const extractUnitCode = (unitName: string): string => {
+    const tower = extractTower(unitName);
+    const unitNum = extractUnitNumber(unitName);
+
+    // Extract tower letter
+    const towerLetter = tower.match(/[A-Z]/)?.[0] || '';
+    // Extract numeric part from unit name
+    const numeric = unitNum.match(/\d+/)?.[0] || '';
+
+    return towerLetter && numeric ? `${towerLetter}${numeric}` : '—';
+  };
+
+  // Handle column header sort
+  const handleColumnSort = (column: ColumnSortType) => {
+    setColumnSort(prev => ({
+      column,
+      direction: prev.column === column && prev.direction === 'asc' ? 'desc' : 'asc',
+    }));
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Sort units by column
+  const sortUnitsByColumn = (units: Unit[]): Unit[] => {
+    const sorted = [...units];
+
+    const compareValues = (a: any, b: any) => {
+      if (a < b) return columnSort.direction === 'asc' ? -1 : 1;
+      if (a > b) return columnSort.direction === 'asc' ? 1 : -1;
+      return 0;
+    };
+
+    sorted.sort((a, b) => {
+      switch (columnSort.column) {
+        case 'unitName':
+          return compareValues(extractUnitNumber(a.name), extractUnitNumber(b.name));
+        case 'tower':
+          return compareValues(extractTower(a.name), extractTower(b.name));
+        case 'floor':
+          return compareValues(a.floor || 0, b.floor || 0);
+        case 'tenant':
+          const tenantA = a.tenant ? `${a.tenant.firstName} ${a.tenant.lastName}` : '';
+          const tenantB = b.tenant ? `${b.tenant.firstName} ${b.tenant.lastName}` : '';
+          return compareValues(tenantA, tenantB);
+        case 'landlord':
+          return compareValues(a.landlord?.name || '', b.landlord?.name || '');
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  };
+
+  // Handle bulk delete
+  const handleBulkDelete = async (propertyId: string) => {
+    if (selectedUnits.size === 0) {
+      alert('No units selected');
+      return;
+    }
+
+    if (!confirm(`Delete ${selectedUnits.size} units?`)) return;
+
+    try {
+      // Delete each selected unit
+      for (const unitId of selectedUnits) {
+        try {
+          await api.delete(`/cmt/properties/${propertyId}/units/${unitId}`);
+        } catch (err) {
+          console.error(`Failed to delete unit ${unitId}`, err);
+        }
+      }
+
+      // Update local state
+      setAllPropertyUnits(prev => ({
+        ...prev,
+        [propertyId]: prev[propertyId].filter(u => !selectedUnits.has(u.id))
+      }));
+
+      setSelectedUnits(new Set());
+      setShowBulkDeleteModal(false);
+      alert(`Deleted ${selectedUnits.size} units`);
+    } catch (err) {
+      alert('Failed to delete units');
+    }
   };
 
   // Save cell in spreadsheet view
