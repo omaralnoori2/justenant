@@ -165,6 +165,18 @@ export default function CMTPropertiesPage() {
     }
   };
 
+  // Extract tower from unit name (e.g., "Flat 101 Tower A" -> "Tower A")
+  const extractTower = (unitName: string): string => {
+    const match = unitName.match(/Tower\s+[A-Z]/);
+    return match ? match[0] : '—';
+  };
+
+  // Extract unit number from unit name (e.g., "Flat 101 Tower A" -> "Flat 101")
+  const extractUnitNumber = (unitName: string): string => {
+    const parts = unitName.split(' Tower ');
+    return parts[0] || unitName;
+  };
+
   // Save cell in spreadsheet view
   const handleSaveCell = async (propertyId: string, unitId: string, field: 'name' | 'floor') => {
     if (!editingValue.trim() && field === 'name') {
@@ -313,7 +325,8 @@ export default function CMTPropertiesPage() {
                   <table className="w-full border-collapse text-sm">
                     <thead>
                       <tr className="bg-brand-blue-lightest border-b-2 border-brand-blue">
-                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/3">Unit Name</th>
+                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/4">Unit Name</th>
+                        <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/6">Tower/Block</th>
                         <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/6">Floor</th>
                         <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/4">Tenant</th>
                         <th className="px-4 py-3 text-left font-bold text-brand-blue w-1/4">Landlord</th>
@@ -344,8 +357,13 @@ export default function CMTPropertiesPage() {
                                 className="w-full px-2 py-1 border-2 border-brand-blue rounded bg-white focus:outline-none"
                               />
                             ) : (
-                              <span>{unit.name}</span>
+                              <span>{extractUnitNumber(unit.name)}</span>
                             )}
+                          </td>
+
+                          {/* Tower/Block - Read Only (Extracted from Unit Name) */}
+                          <td className="px-4 py-3 font-semibold text-brand-blue bg-brand-blue-lightest rounded">
+                            {extractTower(unit.name)}
                           </td>
 
                           {/* Floor - Editable */}
