@@ -21,6 +21,7 @@ export default function CMTTenantsPage() {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ email: '', firstName: '', lastName: '', phone: '', password: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchTenants();
@@ -40,16 +41,20 @@ export default function CMTTenantsPage() {
 
   const handleAddTenant = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setSubmitting(true);
     try {
-      await api.post('/cmt/tenants', formData);
+      const response = await api.post('/cmt/tenants', formData);
+      console.log('Tenant created:', response);
       alert('Tenant created successfully!');
       setFormData({ email: '', firstName: '', lastName: '', phone: '', password: '' });
       setShowForm(false);
       fetchTenants();
-    } catch (err) {
-      console.error('Failed to create tenant', err);
-      alert('Failed to create tenant');
+    } catch (err: any) {
+      console.error('Error creating tenant:', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to create tenant';
+      setError(errorMsg);
+      alert(`Error: ${errorMsg}`);
     } finally {
       setSubmitting(false);
     }
@@ -73,6 +78,11 @@ export default function CMTTenantsPage() {
       {showForm && (
         <div className="card border-l-4 border-l-blue-500">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Add New Tenant</h2>
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+              {error}
+            </div>
+          )}
           <form onSubmit={handleAddTenant} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
