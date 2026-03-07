@@ -259,7 +259,8 @@ export default function CMTPropertiesPage() {
 
     try {
       // Delete each selected unit
-      for (const unitId of selectedUnits) {
+      const unitIdsToDelete = Array.from(selectedUnits);
+      for (const unitId of unitIdsToDelete) {
         try {
           await api.delete(`/cmt/properties/${propertyId}/units/${unitId}`);
         } catch (err) {
