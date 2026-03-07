@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import api from '@/lib/api';
 
 interface Property {
@@ -10,6 +10,7 @@ interface Property {
   name: string;
   address: string;
   landlord?: { name: string };
+  unitCount?: number;
 }
 
 interface Unit {
@@ -17,6 +18,9 @@ interface Unit {
   name: string;
   floor?: number;
 }
+
+type ViewType = 'kanban' | 'list';
+type SortBy = 'name-asc' | 'name-desc' | 'units-high' | 'units-low';
 
 export default function CMTPropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
@@ -28,6 +32,11 @@ export default function CMTPropertiesPage() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const [editingUnitName, setEditingUnitName] = useState('');
+
+  // View and filter states
+  const [viewType, setViewType] = useState<ViewType>('list');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortBy>('name-asc');
 
   // Form states
   const [formData, setFormData] = useState({ name: '', address: '' });
@@ -52,6 +61,32 @@ export default function CMTPropertiesPage() {
       setLoading(false);
     }
   };
+
+  // Filter and sort properties
+  const filteredAndSortedProperties = useMemo(() => {
+    let filtered = properties.filter(p =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.address.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Sort properties
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        case 'units-high':
+          return (b.unitCount || 0) - (a.unitCount || 0);
+        case 'units-low':
+          return (a.unitCount || 0) - (b.unitCount || 0);
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [properties, searchQuery, sortBy]);
 
   const handleCreateProperty = async () => {
     if (!formData.name || !formData.address) {
@@ -114,49 +149,177 @@ export default function CMTPropertiesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Properties</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage residential properties and units</p>
+          <h1 className="text-2xl font-bold text-brand-blue">Properties</h1>
+          <p className="text-brand-gray text-sm mt-1">Manage residential properties and units</p>
         </div>
         <button onClick={() => setShowCreateModal(true)} className="btn-primary">
           + Add Property
         </button>
       </div>
 
-      {/* Properties List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {loading ? (
-          <p className="text-gray-500">Loading properties...</p>
-        ) : properties.length === 0 ? (
-          <p className="text-gray-500 col-span-2">No properties yet. Create one to get started.</p>
-        ) : (
-          properties.map((property) => (
-            <div key={property.id} className="card">
-              <h3 className="font-semibold text-gray-900">{property.name}</h3>
-              <p className="text-sm text-gray-500 mt-1">{property.address}</p>
-              <div className="mt-4 flex gap-2">
+      {/* Controls: Search, Sort, View Toggle */}
+      <div className="card space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Search */}
+          <div>
+            <label className="block text-sm font-medium text-brand-dark mb-1">Search Properties</label>
+            <input
+              type="text"
+              placeholder="Search by name or address..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input-field"
+            />
+          </div>
+
+          {/* Sort */}
+          <div>
+            <label className="block text-sm font-medium text-brand-dark mb-1">Sort By</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortBy)}
+              className="input-field"
+            >
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+              <option value="units-high">Units (High to Low)</option>
+              <option value="units-low">Units (Low to High)</option>
+            </select>
+          </div>
+
+          {/* View Toggle */}
+          <div>
+            <label className="block text-sm font-medium text-brand-dark mb-1">View</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewType('list')}
+                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  viewType === 'list'
+                    ? 'bg-brand-blue text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                📋 List
+              </button>
+              <button
+                onClick={() => setViewType('kanban')}
+                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  viewType === 'kanban'
+                    ? 'bg-brand-blue text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                📊 Kanban
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Properties Display */}
+      {loading ? (
+        <div className="card text-center py-8">
+          <p className="text-brand-gray">Loading properties...</p>
+        </div>
+      ) : filteredAndSortedProperties.length === 0 ? (
+        <div className="card text-center py-8">
+          <p className="text-brand-gray">
+            {properties.length === 0 ? 'No properties yet. Create one to get started.' : 'No properties match your search.'}
+          </p>
+        </div>
+      ) : viewType === 'list' ? (
+        /* LIST VIEW */
+        <div className="card overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-brand-blue-lightest border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-brand-blue">Property Name</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-brand-blue">Address</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-brand-blue">Units</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-brand-blue">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {filteredAndSortedProperties.map((property) => (
+                <tr key={property.id} className="hover:bg-brand-blue-lightest transition-colors">
+                  <td className="px-6 py-4 text-sm font-medium text-brand-dark">{property.name}</td>
+                  <td className="px-6 py-4 text-sm text-brand-gray">{property.address}</td>
+                  <td className="px-6 py-4 text-sm text-brand-dark">
+                    <span className="px-3 py-1 rounded-full bg-brand-blue-lightest text-brand-blue font-semibold">
+                      {property.unitCount || 0}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm space-x-2">
+                    <button
+                      onClick={() => {
+                        setSelectedPropertyId(property.id);
+                        setShowGeneratorModal(true);
+                      }}
+                      className="text-sm px-3 py-2 rounded-lg bg-brand-blue-lightest text-brand-blue hover:bg-brand-blue-light transition-colors"
+                    >
+                      Generate
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setSelectedPropertyId(property.id);
+                        await fetchUnits(property.id);
+                      }}
+                      className="text-sm px-3 py-2 rounded-lg bg-gray-100 text-brand-dark hover:bg-gray-200 transition-colors"
+                    >
+                      View Units
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        /* KANBAN VIEW */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredAndSortedProperties.map((property) => (
+            <div
+              key={property.id}
+              className="card hover:shadow-lg transition-shadow border-l-4 border-l-brand-blue"
+            >
+              <div className="flex items-start justify-between mb-2">
+                <h3 className="font-semibold text-brand-blue text-lg">{property.name}</h3>
+                <span className="px-2 py-1 rounded-full bg-brand-blue-lightest text-brand-blue text-xs font-semibold">
+                  {property.unitCount || 0} units
+                </span>
+              </div>
+              <p className="text-sm text-brand-gray mb-4">{property.address}</p>
+
+              {property.landlord && (
+                <p className="text-xs text-brand-gray mb-4">
+                  👤 <span className="font-medium">{property.landlord.name}</span>
+                </p>
+              )}
+
+              <div className="space-y-2">
                 <button
                   onClick={() => {
                     setSelectedPropertyId(property.id);
                     setShowGeneratorModal(true);
                   }}
-                  className="text-sm px-3 py-2 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200"
+                  className="w-full text-sm px-3 py-2 rounded-lg bg-brand-blue text-white hover:bg-brand-blue-light transition-colors font-medium"
                 >
-                  Generate Units
+                  🏗️ Generate Units
                 </button>
                 <button
                   onClick={async () => {
                     setSelectedPropertyId(property.id);
                     await fetchUnits(property.id);
                   }}
-                  className="text-sm px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  className="w-full text-sm px-3 py-2 rounded-lg bg-gray-100 text-brand-dark hover:bg-gray-200 transition-colors font-medium"
                 >
-                  View Units
+                  👁️ View Units
                 </button>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Create Property Modal */}
       {showCreateModal && (
