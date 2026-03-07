@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from '../common/enums/role.enum';
+import { UserStatus } from '../common/enums/user-status.enum';
 
 @Injectable()
 export class CmtService {
@@ -19,7 +20,7 @@ export class CmtService {
         },
       }),
       this.prisma.tenantProfile.count({
-        where: { cmtId: cmt.id, user: { status: 'ACTIVE' } },
+        where: { cmtId: cmt.id, user: { status: UserStatus.ACTIVE } },
       }),
     ]);
 
@@ -89,7 +90,7 @@ export class CmtService {
 
     return this.prisma.user.update({
       where: { id: targetUserId },
-      data: { status: 'ACTIVE' },
+      data: { status: UserStatus.ACTIVE },
       select: { id: true, email: true, status: true },
     });
   }
@@ -147,7 +148,7 @@ export class CmtService {
           email: data.email,
           passwordHash,
           role: Role.TENANT,
-          status: 'ACTIVE',
+          status: UserStatus.ACTIVE,
         },
       });
 
@@ -182,7 +183,7 @@ export class CmtService {
           email: data.email,
           passwordHash,
           role: Role.LANDLORD,
-          status: 'ACTIVE',
+          status: UserStatus.ACTIVE,
         },
       });
 
@@ -217,7 +218,7 @@ export class CmtService {
           email: data.email,
           passwordHash,
           role: Role.SERVICE_PROVIDER,
-          status: 'ACTIVE',
+          status: UserStatus.ACTIVE,
         },
       });
 
