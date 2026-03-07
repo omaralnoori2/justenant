@@ -37,7 +37,7 @@ interface Property {
 
 export default function PropertyDetailsPage() {
   const params = useParams();
-  const propertyId = params.propertyId as string;
+  const propertyId = params?.propertyId as string;
 
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
