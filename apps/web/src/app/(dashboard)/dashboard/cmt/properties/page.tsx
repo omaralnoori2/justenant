@@ -410,11 +410,13 @@ export default function CMTPropertiesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline">
-                          {showLandlordModal === false {getLandlordDisplay(unit)}{getLandlordDisplay(unit)} <span onClick={() => handleOpenLandlordModal(unit)} className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline hover:bg-blue-50 px-2 py-1 rounded transition-colors">{getLandlordDisplay(unit)}</span>}
+                        <span
+                          onClick={() => handleOpenLandlordModal(unit)}
+                          className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+                        >
+                          {getLandlordDisplay(unit)}
                         </span>
                       </td>
-                    </tr>
                   ))}
               </tbody>
             </table>
@@ -547,7 +549,6 @@ export default function CMTPropertiesPage() {
               Close
             </button>
           </div>
-        </div>
 
       {/* Landlord Assignment Modal */}
       {showLandlordModal && selectedUnit && (
@@ -556,24 +557,51 @@ export default function CMTPropertiesPage() {
             <h2 className="text-lg font-bold text-gray-900 mb-4">
               Assign Landlord to {selectedUnit.name}
             </h2>
+
             <div className="space-y-2 max-h-96 overflow-y-auto mb-4">
               {selectedUnit.landlordId && (
-                <button onClick={handleRemoveLandlord} disabled={assigningLandlord} className="w-full text-left px-4 py-3 rounded border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium mb-2">
+                <button
+                  onClick={handleRemoveLandlord}
+                  disabled={assigningLandlord}
+                  className="w-full text-left px-4 py-3 rounded border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium mb-2"
+                >
                   {assigningLandlord ? 'Removing...' : '✕ Remove Current Landlord'}
                 </button>
               )}
+
               {availableLandlords.length === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-4">No landlords available</p>
               ) : (
                 availableLandlords.map((landlord) => (
-                  <button key={landlord.id} onClick={() => handleAssignLandlord(landlord.id)} disabled={assigningLandlord} className={`w-full text-left px-4 py-3 rounded border transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm ${selectedUnit.landlordId === landlord.id ? 'border-brand-blue bg-blue-50 text-brand-blue font-medium' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+                  <button
+                    key={landlord.id}
+                    onClick={() => handleAssignLandlord(landlord.id)}
+                    disabled={assigningLandlord}
+                    className={`w-full text-left px-4 py-3 rounded border transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm ${
+                      selectedUnit.landlordId === landlord.id
+                        ? 'border-brand-blue bg-blue-50 text-brand-blue font-medium'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
                     {landlord.firstName} {landlord.lastName}
-                    <div className="text-xs text-gray-500 mt-1">{landlord.user?.email}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {landlord.user?.email}
+                    </div>
                   </button>
                 ))
               )}
             </div>
-            <button onClick={() => { setShowLandlordModal(false); setSelectedUnit(null); }} disabled={assigningLandlord} className="w-full px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium">Close</button>
+
+            <button
+              onClick={() => {
+                setShowLandlordModal(false);
+                setSelectedUnit(null);
+              }}
+              disabled={assigningLandlord}
+              className="w-full px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
