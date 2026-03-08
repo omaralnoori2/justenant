@@ -4,17 +4,25 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
-import Link from 'next/link';
+
+interface Unit {
+  id: string;
+  name: string;
+  floor?: number;
+  unitNumber?: number;
+  isOccupied: boolean;
+}
 
 interface Property {
   id: string;
   name: string;
   address: string;
   type: string;
-  createdAt: string;
-  _count?: {
-    units: number;
-  };
+  units: Unit[];
+}
+
+interface GeneratingState {
+  [key: string]: boolean;
 }
 
 export default function CMTPropertiesPage() {
@@ -23,6 +31,8 @@ export default function CMTPropertiesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState({ name: '', address: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [generating, setGenerating] = useState<GeneratingState>({});
+  const [formValues, setFormValues] = useState<{ [key: string]: { towers: number; floors: number; unitsPerFloor: number } }>({});
 
   useEffect(() => {
     fetchProperties();
@@ -32,6 +42,11 @@ export default function CMTPropertiesPage() {
     try {
       const res = await api.get('/cmt/properties');
       setProperties(res.data);
+      const initialValues: typeof formValues = {};
+      res.data.forEach((prop: Property) => {
+        initialValues[prop.id] = { towers: 10, floors: 30, unitsPerFloor: 9 };
+      });
+      setFormValues(initialValues);
     } catch (err) {
       console.error('Failed to fetch properties', err);
     } finally {
@@ -52,6 +67,27 @@ export default function CMTPropertiesPage() {
       alert('Failed to create property');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleGenerateUnits = async (propertyId: string, e: React.FormEvent) => {
+    e.preventDefault();
+    setGenerating({ ...generating, [propertyId]: true });
+    try {
+      const values = formValues[propertyId];
+      const res = await api.post(`/cmt/properties/${propertyId}/generate-units`, {
+        mode: 'tower',
+        towers: values.towers,
+        floors: values.floors,
+        unitsPerFloor: values.unitsPerFloor,
+      });
+      alert(`Generated ${res.data.generated} units!`);
+      fetchProperties();
+    } catch (err) {
+      console.error('Failed to generate units', err);
+      alert('Failed to generate units');
+    } finally {
+      setGenerating({ ...generating, [propertyId]: false });
     }
   };
 
@@ -116,21 +152,131 @@ export default function CMTPropertiesPage() {
           <p className="text-gray-500">No properties yet. Create one to get started.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {properties.map((property) => (
-            <Link key={property.id} href={`/dashboard/cmt/properties/${property.id}`}>
-              <div className="card hover:shadow-lg transition-shadow cursor-pointer h-full flex flex-col">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{property.name}</h3>
-                <p className="text-sm text-gray-600 mb-4 flex-grow">{property.address}</p>
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                  <span className="text-xs font-medium text-gray-500">
-                    {property._count?.units || 0} units
-                  </span>
-                  <span className="text-xs font-medium text-brand-blue">View →</span>
+        <div className="space-y-6">
+          {properties.map((property) => {
+            const values = formValues[property.id] || { towers: 10, floors: 30, unitsPerFloor: 9 };
+            const totalUnitsToGenerate = values.towers * values.floors * values.unitsPerFloor;
+
+            return (
+              <div key={property.id} className="card">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">{property.name}</h2>
+                  <p className="text-gray-600 text-sm mt-1">{property.address}</p>
                 </div>
+
+                <div className="border-t border-gray-200 pt-6 mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Generate Units</h3>
+                  <form onSubmit={(e) => handleGenerateUnits(property.id, e)} className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Number of Towers (X)
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={values.towers}
+                          onChange={(e) =>
+                            setFormValues({
+                              ...formValues,
+                              [property.id]: { ...values, towers: parseInt(e.target.value) || 1 },
+                            })
+                          }
+                          className="input-field"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Floors per Tower (Y)
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={values.floors}
+                          onChange={(e) =>
+                            setFormValues({
+                              ...formValues,
+                              [property.id]: { ...values, floors: parseInt(e.target.value) || 1 },
+                            })
+                          }
+                          className="input-field"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Units per Floor (Z)
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={values.unitsPerFloor}
+                          onChange={(e) =>
+                            setFormValues({
+                              ...formValues,
+                              [property.id]: { ...values, unitsPerFloor: parseInt(e.target.value) || 1 },
+                            })
+                          }
+                          className="input-field"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <p className="text-sm text-gray-600">
+                        <strong>Total units to generate:</strong> {totalUnitsToGenerate.toLocaleString()}
+                      </p>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={generating[property.id]}
+                      className="btn-primary w-full"
+                    >
+                      {generating[property.id] ? 'Generating...' : 'Generate Units'}
+                    </button>
+                  </form>
+                </div>
+
+                {property.units && property.units.length > 0 && (
+                  <div className="border-t border-gray-200 pt-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">
+                      Units ({property.units.length})
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200 bg-gray-50">
+                            <th className="px-4 py-2 text-left font-medium text-gray-700">Unit Name</th>
+                            <th className="px-4 py-2 text-left font-medium text-gray-700">Floor</th>
+                            <th className="px-4 py-2 text-left font-medium text-gray-700">Unit #</th>
+                            <th className="px-4 py-2 text-left font-medium text-gray-700">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {property.units.map((unit) => (
+                            <tr key={unit.id} className="border-b border-gray-200 hover:bg-gray-50">
+                              <td className="px-4 py-2">{unit.name}</td>
+                              <td className="px-4 py-2">{unit.floor || '-'}</td>
+                              <td className="px-4 py-2">{unit.unitNumber || '-'}</td>
+                              <td className="px-4 py-2">
+                                <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                                  unit.isOccupied
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-green-100 text-green-700'
+                                }`}>
+                                  {unit.isOccupied ? 'Occupied' : 'Vacant'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
