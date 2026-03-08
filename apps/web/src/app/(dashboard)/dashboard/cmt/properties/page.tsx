@@ -111,6 +111,12 @@ export default function CMTPropertiesPage() {
     return `${unit.property.landlord.firstName} ${unit.property.landlord.lastName}`;
   };
 
+  const getTowerName = (unit: Unit) => {
+    // Extract tower name from unit name (e.g., "Flat 101 Tower A" -> "A")
+    const towerMatch = unit.name.match(/Tower\s([A-Z]+)$/);
+    return towerMatch ? towerMatch[1] : '-';
+  };
+
   if (loading) return <div className="text-gray-500">Loading properties...</div>;
 
   const totalUnitsToGenerate = generatorValues.towers * generatorValues.floors * generatorValues.unitsPerFloor;
@@ -273,7 +279,7 @@ export default function CMTPropertiesPage() {
                   <th className="px-4 py-3 text-left font-medium text-gray-700 w-12">No.</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Property</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Unit Name</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">Floor</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-700">Tower</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Status</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Tenant</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Landlord</th>
@@ -289,7 +295,7 @@ export default function CMTPropertiesPage() {
                       </td>
                       <td className="px-4 py-3 text-gray-900">{unit.property.name}</td>
                       <td className="px-4 py-3 text-gray-900">{unit.name}</td>
-                      <td className="px-4 py-3 text-gray-600">{unit.floor || '-'}</td>
+                      <td className="px-4 py-3 text-gray-600 font-medium">{getTowerName(unit)}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                           unit.isOccupied
