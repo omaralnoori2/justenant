@@ -61,6 +61,8 @@ export default function CMTPropertiesPage() {
   const [showLandlordModal, setShowLandlordModal] = useState(false);
   const [availableLandlords, setAvailableLandlords] = useState<LandlordOption[]>([]);
   const [assigningLandlord, setAssigningLandlord] = useState(false);
+  const [sortColumn, setSortColumn] = useState<string>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     fetchProperties();
@@ -268,16 +270,68 @@ export default function CMTPropertiesPage() {
     return towerMatch ? towerMatch[1] : '-';
   };
 
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortedUnits = () => {
+    const sorted = [...allUnits].sort((a, b) => {
+      let aVal: any;
+      let bVal: any;
+
+      switch (sortColumn) {
+        case 'property':
+          aVal = a.property.name.toLowerCase();
+          bVal = b.property.name.toLowerCase();
+          break;
+        case 'name':
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        case 'tower':
+          aVal = getTowerName(a);
+          bVal = getTowerName(b);
+          break;
+        case 'status':
+          aVal = a.isOccupied ? 1 : 0;
+          bVal = b.isOccupied ? 1 : 0;
+          break;
+        case 'tenant':
+          aVal = getTenantDisplay(a).toLowerCase();
+          bVal = getTenantDisplay(b).toLowerCase();
+          break;
+        case 'landlord':
+          aVal = getLandlordDisplay(a).toLowerCase();
+          bVal = getLandlordDisplay(b).toLowerCase();
+          break;
+        default:
+          return 0;
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  };
+
   const totalUnitsToGenerate = generatorValues.towers * generatorValues.floors * generatorValues.unitsPerFloor;
 
   if (loading) {
     return <div className="text-gray-500">Loading properties...</div>;
   }
 
+  const sortedUnits = getSortedUnits();
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
-  const paginatedUnits = allUnits.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(allUnits.length / rowsPerPage);
+  const paginatedUnits = sortedUnits.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(sortedUnits.length / rowsPerPage);
 
   return (
     <div className="space-y-6">
@@ -435,12 +489,42 @@ export default function CMTPropertiesPage() {
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
                   <th className="px-4 py-3 text-left font-medium text-gray-700 w-12">No.</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">Property</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">Unit Name</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">Tower</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">Status</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">Tenant</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">Landlord</th>
+                  <th
+                    onClick={() => handleSort('property')}
+                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors"
+                  >
+                    Property {sortColumn === 'property' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th
+                    onClick={() => handleSort('name')}
+                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors"
+                  >
+                    Unit Name {sortColumn === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th
+                    onClick={() => handleSort('tower')}
+                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors"
+                  >
+                    Tower {sortColumn === 'tower' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th
+                    onClick={() => handleSort('status')}
+                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors"
+                  >
+                    Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th
+                    onClick={() => handleSort('tenant')}
+                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors"
+                  >
+                    Tenant {sortColumn === 'tenant' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th
+                    onClick={() => handleSort('landlord')}
+                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors"
+                  >
+                    Landlord {sortColumn === 'landlord' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -506,7 +590,7 @@ export default function CMTPropertiesPage() {
                 </select>
               </div>
               <div className="text-sm text-gray-600">
-                Showing {startIndex + 1} to {Math.min(endIndex, allUnits.length)} of {allUnits.length} units
+                Showing {startIndex + 1} to {Math.min(endIndex, sortedUnits.length)} of {sortedUnits.length} units
               </div>
             </div>
 
