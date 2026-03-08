@@ -22,6 +22,7 @@ interface Property {
   address: string;
   type: string;
   units: Unit[];
+  landlord?: { id: string; firstName: string; lastName: string; user: { email: string } };
 }
 
 export default function CMTPropertiesPage() {
