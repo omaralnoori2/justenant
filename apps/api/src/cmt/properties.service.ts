@@ -137,12 +137,7 @@ export class PropertiesService {
       }
     }
 
-    // Delete existing units first to avoid conflicts
-    await this.prisma.unit.deleteMany({
-      where: { propertyId },
-    });
-
-    // Bulk create units
+    // Bulk create units (append to existing)
     const result = await this.prisma.unit.createMany({
       data: units,
     });
