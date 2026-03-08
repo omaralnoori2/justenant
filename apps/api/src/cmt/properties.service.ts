@@ -170,4 +170,61 @@ export class PropertiesService {
       data: { name },
     });
   }
+
+  async assignTenantToUnit(propertyId: string, unitId: string, userId: string, tenantId: string) {
+    // Verify access
+    const cmtId = await this.getCmtIdByUserId(userId);
+    const property = await this.prisma.property.findUnique({
+      where: { id: propertyId },
+    });
+
+    if (!property || property.cmtId !== cmtId) {
+      throw new ForbiddenException('Property not found or access denied');
+    }
+
+    const unit = await this.prisma.unit.findUnique({
+      where: { id: unitId },
+    });
+    if (!unit || unit.propertyId !== propertyId) {
+      throw new ForbiddenException('Unit not found or access denied');
+    }
+
+    const tenant = await this.prisma.tenantProfile.findUnique({
+      where: { id: tenantId },
+      include: { user: true },
+    });
+    if (!tenant || tenant.cmtId !== cmtId) {
+      throw new ForbiddenException('Tenant not found or access denied');
+    }
+
+    return this.prisma.unit.update({
+      where: { id: unitId },
+      data: { tenantId: tenantId },
+      include: { tenant: { include: { user: true } } },
+    });
+  }
+
+  async removeTenantFromUnit(propertyId: string, unitId: string, userId: string) {
+    // Verify access
+    const cmtId = await this.getCmtIdByUserId(userId);
+    const property = await this.prisma.property.findUnique({
+      where: { id: propertyId },
+    });
+
+    if (!property || property.cmtId !== cmtId) {
+      throw new ForbiddenException('Property not found or access denied');
+    }
+
+    const unit = await this.prisma.unit.findUnique({
+      where: { id: unitId },
+    });
+    if (!unit || unit.propertyId !== propertyId) {
+      throw new ForbiddenException('Unit not found or access denied');
+    }
+
+    return this.prisma.unit.update({
+      where: { id: unitId },
+      data: { tenantId: null },
+    });
+  }
 }

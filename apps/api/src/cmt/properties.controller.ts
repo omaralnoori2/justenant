@@ -69,4 +69,25 @@ export class PropertiesController {
   ) {
     return this.propertiesService.updateUnitName(propertyId, unitId, user.id, name);
   }
+
+  // Assign tenant to unit
+  @Post(':propertyId/units/:unitId/assign-tenant')
+  async assignTenantToUnit(
+    @CurrentUser() user: User,
+    @Param('propertyId') propertyId: string,
+    @Param('unitId') unitId: string,
+    @Body('tenantId') tenantId: string,
+  ) {
+    return this.propertiesService.assignTenantToUnit(propertyId, unitId, user.id, tenantId);
+  }
+
+  // Remove tenant from unit
+  @Post(':propertyId/units/:unitId/remove-tenant')
+  async removeTenantFromUnit(
+    @CurrentUser() user: User,
+    @Param('propertyId') propertyId: string,
+    @Param('unitId') unitId: string,
+  ) {
+    return this.propertiesService.removeTenantFromUnit(propertyId, unitId, user.id);
+  }
 }
