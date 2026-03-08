@@ -270,6 +270,7 @@ export default function CMTPropertiesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="px-4 py-3 text-left font-medium text-gray-700 w-12">No.</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Property</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Unit Name</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Floor</th>
@@ -281,8 +282,11 @@ export default function CMTPropertiesPage() {
               <tbody>
                 {allUnits
                   .slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
-                  .map((unit) => (
+                  .map((unit, index) => (
                     <tr key={unit.id} className="border-b border-gray-200 hover:bg-gray-50">
+                      <td className="px-4 py-3 text-gray-600 font-medium w-12">
+                        {(currentPage - 1) * rowsPerPage + index + 1}
+                      </td>
                       <td className="px-4 py-3 text-gray-900">{unit.property.name}</td>
                       <td className="px-4 py-3 text-gray-900">{unit.name}</td>
                       <td className="px-4 py-3 text-gray-600">{unit.floor || '-'}</td>
