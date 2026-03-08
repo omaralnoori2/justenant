@@ -25,6 +25,20 @@ interface Property {
   landlord?: { id: string; firstName: string; lastName: string; user: { email: string } };
 }
 
+interface TenantOption {
+  id: string;
+  firstName: string;
+  lastName: string;
+  user?: { email: string };
+}
+
+interface LandlordOption {
+  id: string;
+  firstName: string;
+  lastName: string;
+  user?: { email: string };
+}
+
 export default function CMTPropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
