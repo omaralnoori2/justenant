@@ -265,3 +265,65 @@ export class PropertiesService {
     });
   }
 }
+
+  async assignLandlordToUnit(propertyId: string, unitId: string, userId: string, landlordId: string) {
+    try {
+      // Verify access
+      const cmtId = await this.getCmtIdByUserId(userId);
+      const property = await this.prisma.property.findUnique({
+        where: { id: propertyId },
+      });
+
+      if (!property || property.cmtId !== cmtId) {
+        throw new ForbiddenException('Property not found or access denied');
+      }
+
+      const unit = await this.prisma.unit.findUnique({
+        where: { id: unitId },
+      });
+      if (!unit || unit.propertyId !== propertyId) {
+        throw new ForbiddenException('Unit not found or access denied');
+      }
+
+      const landlord = await this.prisma.landlordProfile.findUnique({
+        where: { id: landlordId },
+        include: { user: true },
+      });
+      if (!landlord || landlord.cmtId !== cmtId) {
+        throw new ForbiddenException('Landlord not found or access denied');
+      }
+
+      return this.prisma.unit.update({
+        where: { id: unitId },
+        data: { landlordId: landlordId },
+        include: { landlord: { include: { user: true } } },
+      });
+    } catch (error) {
+      console.error('Error assigning landlord to unit:', error);
+      throw error;
+    }
+  }
+
+  async removeLandlordFromUnit(propertyId: string, unitId: string, userId: string) {
+    // Verify access
+    const cmtId = await this.getCmtIdByUserId(userId);
+    const property = await this.prisma.property.findUnique({
+      where: { id: propertyId },
+    });
+
+    if (!property || property.cmtId !== cmtId) {
+      throw new ForbiddenException('Property not found or access denied');
+    }
+
+    const unit = await this.prisma.unit.findUnique({
+      where: { id: unitId },
+    });
+    if (!unit || unit.propertyId !== propertyId) {
+      throw new ForbiddenException('Unit not found or access denied');
+    }
+
+    return this.prisma.unit.update({
+      where: { id: unitId },
+      data: { landlordId: null },
+    });
+  }
