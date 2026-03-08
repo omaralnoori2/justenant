@@ -382,10 +382,6 @@ export default function CMTPropertiesPage() {
               </button>
             </div>
           </div>
-        </>
-      )}
-    </div>
-  );
 
       {showTenantModal && selectedUnit && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -393,6 +389,7 @@ export default function CMTPropertiesPage() {
             <h2 className="text-lg font-bold text-gray-900 mb-4">
               Assign Tenant to {selectedUnit.name}
             </h2>
+
             <div className="space-y-2 max-h-96 overflow-y-auto mb-4">
               {selectedUnit.tenantId && (
                 <button
@@ -403,6 +400,7 @@ export default function CMTPropertiesPage() {
                   {assigningTenant ? 'Removing...' : '✕ Remove Current Tenant'}
                 </button>
               )}
+
               {availableTenants.length === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-4">No tenants available</p>
               ) : (
@@ -418,17 +416,21 @@ export default function CMTPropertiesPage() {
                     }`}
                   >
                     {tenant.firstName} {tenant.lastName}
-                    <div className="text-xs text-gray-500 mt-1">{tenant.user?.email}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {tenant.user?.email}
+                    </div>
                   </button>
                 ))
               )}
             </div>
+
             <button
               onClick={() => {
                 setShowTenantModal(false);
                 setSelectedUnit(null);
               }}
-              className="w-full px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+              disabled={assigningTenant}
+              className="w-full px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               Close
             </button>
@@ -442,6 +444,7 @@ export default function CMTPropertiesPage() {
             <h2 className="text-lg font-bold text-gray-900 mb-4">
               Assign Landlord to {selectedUnit.name}
             </h2>
+
             <div className="space-y-2 max-h-96 overflow-y-auto mb-4">
               {selectedUnit.landlordId && (
                 <button
@@ -452,6 +455,7 @@ export default function CMTPropertiesPage() {
                   {assigningLandlord ? 'Removing...' : '✕ Remove Current Landlord'}
                 </button>
               )}
+
               {availableLandlords.length === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-4">No landlords available</p>
               ) : (
@@ -467,26 +471,27 @@ export default function CMTPropertiesPage() {
                     }`}
                   >
                     {landlord.firstName} {landlord.lastName}
-                    <div className="text-xs text-gray-500 mt-1">{landlord.user?.email}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {landlord.user?.email}
+                    </div>
                   </button>
                 ))
               )}
             </div>
+
             <button
               onClick={() => {
                 setShowLandlordModal(false);
                 setSelectedUnit(null);
               }}
-              className="w-full px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+              disabled={assigningLandlord}
+              className="w-full px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               Close
             </button>
           </div>
         </div>
       )}
-
-      {showTenantModal && selectedUnit && (<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4"><h2 className="text-lg font-bold text-gray-900 mb-4">Assign Tenant to {selectedUnit.name}</h2><div className="space-y-2 max-h-96 overflow-y-auto mb-4">{selectedUnit.tenantId && <button onClick={handleRemoveTenant} disabled={assigningTenant} className="w-full text-left px-4 py-3 rounded border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 text-sm font-medium mb-2">{assigningTenant ? 'Removing...' : '✕ Remove'}</button>}{availableTenants.map(t => <button key={t.id} onClick={() => handleAssignTenant(t.id)} disabled={assigningTenant} className={`w-full text-left px-4 py-3 rounded border text-sm ${selectedUnit.tenantId === t.id ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}>{t.firstName} {t.lastName}</button>)}</div><button onClick={() => {setShowTenantModal(false); setSelectedUnit(null);}} className="w-full px-4 py-2 rounded border border-gray-300">Close</button></div></div>)}
-
-      {showLandlordModal && selectedUnit && (<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4"><h2 className="text-lg font-bold text-gray-900 mb-4">Assign Landlord to {selectedUnit.name}</h2><div className="space-y-2 max-h-96 overflow-y-auto mb-4">{selectedUnit.landlordId && <button onClick={handleRemoveLandlord} disabled={assigningLandlord} className="w-full text-left px-4 py-3 rounded border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 text-sm font-medium mb-2">{assigningLandlord ? 'Removing...' : '✕ Remove'}</button>}{availableLandlords.map(l => <button key={l.id} onClick={() => handleAssignLandlord(l.id)} disabled={assigningLandlord} className={`w-full text-left px-4 py-3 rounded border text-sm ${selectedUnit.landlordId === l.id ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}>{l.firstName} {l.lastName}</button>)}</div><button onClick={() => {setShowLandlordModal(false); setSelectedUnit(null);}} className="w-full px-4 py-2 rounded border border-gray-300">Close</button></div></div>)}
+    </div>
   );
 }
