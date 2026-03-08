@@ -36,6 +36,8 @@ export default function CMTPropertiesPage() {
   const [selectedProperty, setSelectedProperty] = useState<string>('');
   const [generatorValues, setGeneratorValues] = useState({ towers: 10, floors: 30, unitsPerFloor: 9 });
   const [generating, setGenerating] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(30);
 
   useEffect(() => {
     fetchProperties();
@@ -263,55 +265,127 @@ export default function CMTPropertiesPage() {
           <p className="text-gray-500">No units yet. Create a property and generate units to get started.</p>
         </div>
       ) : (
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-4 py-3 text-left font-medium text-gray-700">Property</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">Unit Name</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">Floor</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">Unit #</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">Status</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">Tenant</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">Landlord</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allUnits.map((unit) => (
-                <tr key={unit.id} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-900">{unit.property.name}</td>
-                  <td className="px-4 py-3 text-gray-900">{unit.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{unit.floor || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600">{unit.unitNumber || '-'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                      unit.isOccupied
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-green-100 text-green-700'
-                    }`}>
-                      {unit.isOccupied ? 'Occupied' : 'Vacant'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline">
-                      {getTenantDisplay(unit)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline">
-                      {getLandlordDisplay(unit)}
-                    </span>
-                  </td>
+        <>
+          <div className="card overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="px-4 py-3 text-left font-medium text-gray-700">Property</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-700">Unit Name</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-700">Floor</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-700">Unit #</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-700">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-700">Tenant</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-700">Landlord</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {allUnits
+                  .slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+                  .map((unit) => (
+                    <tr key={unit.id} className="border-b border-gray-200 hover:bg-gray-50">
+                      <td className="px-4 py-3 text-gray-900">{unit.property.name}</td>
+                      <td className="px-4 py-3 text-gray-900">{unit.name}</td>
+                      <td className="px-4 py-3 text-gray-600">{unit.floor || '-'}</td>
+                      <td className="px-4 py-3 text-gray-600">{unit.unitNumber || '-'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                          unit.isOccupied
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-green-100 text-green-700'
+                        }`}>
+                          {unit.isOccupied ? 'Occupied' : 'Vacant'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline">
+                          {getTenantDisplay(unit)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline">
+                          {getLandlordDisplay(unit)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
 
-      <div className="text-xs text-gray-500 text-center">
-        Total Units: {allUnits.length}
-      </div>
+          {/* Pagination Controls */}
+          <div className="card flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">Rows per page:</label>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => {
+                    setRowsPerPage(parseInt(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="input-field py-1 text-sm"
+                >
+                  <option value={10}>10</option>
+                  <option value={30}>30</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={200}>200</option>
+                  <option value={500}>500</option>
+                </select>
+              </div>
+              <div className="text-sm text-gray-600">
+                Showing {(currentPage - 1) * rowsPerPage + 1} to{' '}
+                {Math.min(currentPage * rowsPerPage, allUnits.length)} of {allUnits.length} units
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              >
+                Previous
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from(
+                  { length: Math.ceil(allUnits.length / rowsPerPage) },
+                  (_, i) => i + 1
+                )
+                  .slice(
+                    Math.max(0, currentPage - 3),
+                    Math.min(Math.ceil(allUnits.length / rowsPerPage), currentPage + 2)
+                  )
+                  .map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-2 py-1 rounded text-sm font-medium ${
+                        page === currentPage
+                          ? 'bg-brand-blue text-white'
+                          : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+              </div>
+
+              <button
+                onClick={() =>
+                  setCurrentPage(Math.min(Math.ceil(allUnits.length / rowsPerPage), currentPage + 1))
+                }
+                disabled={currentPage === Math.ceil(allUnits.length / rowsPerPage)}
+                className="px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
