@@ -38,6 +38,13 @@ export default function CMTPropertiesPage() {
   const [generating, setGenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(30);
+  const [showTenantModal, setShowTenantModal] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
+  const [availableTenants, setAvailableTenants] = useState<TenantOption[]>([]);
+  const [assigningTenant, setAssigningTenant] = useState(false);
+  const [showLandlordModal, setShowLandlordModal] = useState(false);
+  const [availableLandlords, setAvailableLandlords] = useState<LandlordOption[]>([]);
+  const [assigningLandlord, setAssigningLandlord] = useState(false);
 
   useEffect(() => {
     fetchProperties();
