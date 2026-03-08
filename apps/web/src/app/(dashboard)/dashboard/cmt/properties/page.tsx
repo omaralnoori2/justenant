@@ -79,15 +79,18 @@ export default function CMTPropertiesPage() {
     if (!selectedUnit) return;
     setAssigningTenant(true);
     try {
-      await api.post(`/cmt/properties/${selectedUnit.property.id}/units/${selectedUnit.id}/assign-tenant`, {
-        tenantId,
-      });
+      console.log('Assigning tenant:', tenantId, 'to unit:', selectedUnit.id, 'property:', selectedUnit.property.id);
+      const url = `/cmt/properties/${selectedUnit.property.id}/units/${selectedUnit.id}/assign-tenant`;
+      console.log('API URL:', url);
+      const res = await api.post(url, { tenantId });
+      console.log('Assignment response:', res.data);
       setShowTenantModal(false);
       setSelectedUnit(null);
-      fetchProperties();
-    } catch (err) {
-      console.error('Failed to assign tenant', err);
-      alert('Failed to assign tenant');
+      await fetchProperties();
+    } catch (err: any) {
+      console.error('Failed to assign tenant:', err);
+      console.error('Error details:', err.response?.data);
+      alert(`Failed to assign tenant: ${err.response?.data?.message || err.message}`);
     } finally {
       setAssigningTenant(false);
     }
