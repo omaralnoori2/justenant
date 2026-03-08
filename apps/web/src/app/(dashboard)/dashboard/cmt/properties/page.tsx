@@ -69,13 +69,19 @@ export default function CMTPropertiesPage() {
   const fetchProperties = async () => {
     try {
       const res = await api.get('/cmt/properties');
+      console.log('Fetched properties response:', res.data);
+
       setProperties(res.data);
       const units = res.data.flatMap((prop: Property) =>
-        prop.units.map((unit: Unit) => ({
-          ...unit,
-          property: { id: prop.id, name: prop.name, landlord: prop.landlord }
-        }))
+        prop.units.map((unit: Unit) => {
+          console.log(`Unit ${unit.name} landlord data:`, unit.landlord);
+          return {
+            ...unit,
+            property: { id: prop.id, name: prop.name, landlord: prop.landlord }
+          };
+        })
       );
+      console.log('Processed units with landlord data:', units);
       setAllUnits(units);
     } catch (err) {
       console.error('Failed to fetch properties', err);

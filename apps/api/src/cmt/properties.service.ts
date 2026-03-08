@@ -55,6 +55,11 @@ export class PropertiesService {
                 user: { select: { id: true, email: true } },
               },
             },
+            landlord: {
+              include: {
+                user: { select: { id: true, email: true } },
+              },
+            },
           },
         },
         landlord: true,
@@ -71,6 +76,11 @@ export class PropertiesService {
           orderBy: { createdAt: 'asc' },
           include: {
             tenant: {
+              include: {
+                user: { select: { id: true, email: true } },
+              },
+            },
+            landlord: {
               include: {
                 user: { select: { id: true, email: true } },
               },
@@ -175,6 +185,18 @@ export class PropertiesService {
 
     return this.prisma.unit.findMany({
       where: { propertyId },
+      include: {
+        tenant: {
+          include: {
+            user: { select: { id: true, email: true } },
+          },
+        },
+        landlord: {
+          include: {
+            user: { select: { id: true, email: true } },
+          },
+        },
+      },
     });
   }
 
