@@ -566,6 +566,10 @@ export default function CMTPropertiesPage() {
       )}
     </div>
 
+
+        </div>
+      )}
+
       {/* Landlord Assignment Modal */}
       {showLandlordModal && selectedUnit && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -584,7 +588,6 @@ export default function CMTPropertiesPage() {
                   {assigningLandlord ? 'Removing...' : '✕ Remove Current Landlord'}
                 </button>
               )}
-
               {availableLandlords.length === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-4">No landlords available</p>
               ) : (
@@ -621,5 +624,6 @@ export default function CMTPropertiesPage() {
           </div>
         </div>
       )}
+    </div>
   );
 }
