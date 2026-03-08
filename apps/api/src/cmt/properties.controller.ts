@@ -90,4 +90,25 @@ export class PropertiesController {
   ) {
     return this.propertiesService.removeTenantFromUnit(propertyId, unitId, user.id);
   }
+
+  // Assign landlord to unit
+  @Post(':propertyId/units/:unitId/assign-landlord')
+  async assignLandlordToUnit(
+    @CurrentUser() user: User,
+    @Param('propertyId') propertyId: string,
+    @Param('unitId') unitId: string,
+    @Body('landlordId') landlordId: string,
+  ) {
+    return this.propertiesService.assignLandlordToUnit(propertyId, unitId, user.id, landlordId);
+  }
+
+  // Remove landlord from unit
+  @Post(':propertyId/units/:unitId/remove-landlord')
+  async removeLandlordFromUnit(
+    @CurrentUser() user: User,
+    @Param('propertyId') propertyId: string,
+    @Param('unitId') unitId: string,
+  ) {
+    return this.propertiesService.removeLandlordFromUnit(propertyId, unitId, user.id);
+  }
 }
