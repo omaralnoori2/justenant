@@ -113,7 +113,7 @@ export default function CMTPropertiesPage() {
       setAssigningTenant(false);
     }
   };
-n  const handleOpenLandlordModal = async (unit: Unit) => {
+  const handleOpenLandlordModal = async (unit: Unit) => {
     try {
       const res = await api.get("/cmt/landlords");
       setAvailableLandlords(res.data || []);
