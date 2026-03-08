@@ -75,6 +75,96 @@ export default function CMTPropertiesPage() {
     }
   };
 
+
+  const handleOpenTenantModal = async (unit: Unit) => {
+    try {
+      const res = await api.get('/cmt/tenants');
+      setAvailableTenants(res.data || []);
+      setSelectedUnit(unit);
+      setShowTenantModal(true);
+    } catch (err) {
+      console.error('Failed to fetch tenants', err);
+      alert('Failed to fetch available tenants');
+    }
+  };
+
+  const handleAssignTenant = async (tenantId: string) => {
+    if (!selectedUnit) return;
+    setAssigningTenant(true);
+    try {
+      const url = `/cmt/properties/${selectedUnit.property.id}/units/${selectedUnit.id}/assign-tenant`;
+      await api.post(url, { tenantId });
+      setShowTenantModal(false);
+      setSelectedUnit(null);
+      fetchProperties();
+    } catch (err: any) {
+      console.error('Failed to assign tenant:', err);
+      alert(`Failed to assign tenant: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setAssigningTenant(false);
+    }
+  };
+
+  const handleRemoveTenant = async () => {
+    if (!selectedUnit) return;
+    setAssigningTenant(true);
+    try {
+      await api.post(`/cmt/properties/${selectedUnit.property.id}/units/${selectedUnit.id}/remove-tenant`);
+      setShowTenantModal(false);
+      setSelectedUnit(null);
+      fetchProperties();
+    } catch (err) {
+      console.error('Failed to remove tenant', err);
+      alert('Failed to remove tenant');
+    } finally {
+      setAssigningTenant(false);
+    }
+  };
+
+  const handleOpenLandlordModal = async (unit: Unit) => {
+    try {
+      const res = await api.get('/cmt/landlords');
+      setAvailableLandlords(res.data || []);
+      setSelectedUnit(unit);
+      setShowLandlordModal(true);
+    } catch (err) {
+      console.error('Failed to fetch landlords', err);
+      alert('Failed to fetch available landlords');
+    }
+  };
+
+  const handleAssignLandlord = async (landlordId: string) => {
+    if (!selectedUnit) return;
+    setAssigningLandlord(true);
+    try {
+      const url = `/cmt/properties/${selectedUnit.property.id}/units/${selectedUnit.id}/assign-landlord`;
+      await api.post(url, { landlordId });
+      setShowLandlordModal(false);
+      setSelectedUnit(null);
+      fetchProperties();
+    } catch (err: any) {
+      console.error('Failed to assign landlord:', err);
+      alert(`Failed to assign landlord: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setAssigningLandlord(false);
+    }
+  };
+
+  const handleRemoveLandlord = async () => {
+    if (!selectedUnit) return;
+    setAssigningLandlord(true);
+    try {
+      await api.post(`/cmt/properties/${selectedUnit.property.id}/units/${selectedUnit.id}/remove-landlord`);
+      setShowLandlordModal(false);
+      setSelectedUnit(null);
+      fetchProperties();
+    } catch (err) {
+      console.error('Failed to remove landlord', err);
+      alert('Failed to remove landlord');
+    } finally {
+      setAssigningLandlord(false);
+    }
+  };
   const handleGenerateUnits = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProperty) {
