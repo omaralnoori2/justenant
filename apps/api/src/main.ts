@@ -24,3 +24,5 @@ async function bootstrap() {
   console.log(`JusTenant API running on http://localhost:${port}/api`);
 }
 bootstrap();
+// Force API rebuild: Sun Mar  8 17:34:44 AST 2026
+// Build trigger

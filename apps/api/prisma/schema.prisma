@@ -145,6 +145,7 @@ model LandlordProfile {
   updatedAt DateTime   @updatedAt
 
   properties Property[]
+  units      Unit[]
 }
 
 // ─── Tenant ───────────────────────────────────────────────────────────────────
@@ -213,6 +214,8 @@ model Unit {
   isOccupied Boolean  @default(false)
   tenantId   String?  @unique
   tenant     TenantProfile? @relation(fields: [tenantId], references: [id])
+  landlordId String?
+  landlord   LandlordProfile? @relation(fields: [landlordId], references: [id])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
