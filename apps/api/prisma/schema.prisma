@@ -145,6 +145,7 @@ model LandlordProfile {
   updatedAt DateTime   @updatedAt
 
   properties Property[]
+  units      Unit[]
 }
 
 // ─── Tenant ───────────────────────────────────────────────────────────────────
