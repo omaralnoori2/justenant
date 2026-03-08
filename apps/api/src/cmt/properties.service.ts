@@ -46,7 +46,18 @@ export class PropertiesService {
     const cmtId = await this.getCmtIdByUserId(userId);
     return this.prisma.property.findMany({
       where: { cmtId },
-      include: { units: true, landlord: true },
+      include: {
+        units: {
+          include: {
+            tenant: {
+              include: {
+                user: { select: { id: true, email: true } },
+              },
+            },
+          },
+        },
+        landlord: true,
+      },
     });
   }
 
@@ -54,7 +65,18 @@ export class PropertiesService {
     const cmtId = await this.getCmtIdByUserId(userId);
     const property = await this.prisma.property.findUnique({
       where: { id },
-      include: { units: true, landlord: true },
+      include: {
+        units: {
+          include: {
+            tenant: {
+              include: {
+                user: { select: { id: true, email: true } },
+              },
+            },
+          },
+        },
+        landlord: true,
+      },
     });
     if (!property || property.cmtId !== cmtId) {
       throw new ForbiddenException('Property not found or access denied');
