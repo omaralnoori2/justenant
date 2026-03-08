@@ -273,7 +273,6 @@ export default function CMTPropertiesPage() {
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Property</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Unit Name</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Floor</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">Unit #</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Status</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Tenant</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">Landlord</th>
@@ -287,7 +286,6 @@ export default function CMTPropertiesPage() {
                       <td className="px-4 py-3 text-gray-900">{unit.property.name}</td>
                       <td className="px-4 py-3 text-gray-900">{unit.name}</td>
                       <td className="px-4 py-3 text-gray-600">{unit.floor || '-'}</td>
-                      <td className="px-4 py-3 text-gray-600">{unit.unitNumber || '-'}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                           unit.isOccupied
