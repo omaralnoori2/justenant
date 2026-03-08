@@ -296,12 +296,12 @@ export default function CMTPropertiesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline">
+                        <span onClick={() => handleOpenTenantModal(unit)} className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline">
                           {getTenantDisplay(unit)}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline">
+                        <span onClick={() => handleOpenLandlordModal(unit)} className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline">
                           {getLandlordDisplay(unit)}
                         </span>
                       </td>
