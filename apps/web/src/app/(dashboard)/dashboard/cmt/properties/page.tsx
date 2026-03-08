@@ -84,18 +84,15 @@ export default function CMTPropertiesPage() {
     if (!selectedUnit) return;
     setAssigningTenant(true);
     try {
-      console.log('Assigning tenant:', tenantId, 'to unit:', selectedUnit.id, 'property:', selectedUnit.property.id);
-      const url = `/cmt/properties/${selectedUnit.property.id}/units/${selectedUnit.id}/assign-tenant`;
-      console.log('API URL:', url);
-      const res = await api.post(url, { tenantId });
-      console.log('Assignment response:', res.data);
+      await api.post(`/cmt/properties/${selectedUnit.property.id}/units/${selectedUnit.id}/assign-tenant`, {
+        tenantId,
+      });
       setShowTenantModal(false);
       setSelectedUnit(null);
-      await fetchProperties();
-    } catch (err: any) {
-      console.error('Failed to assign tenant:', err);
-      console.error('Error details:', err.response?.data);
-      alert(`Failed to assign tenant: ${err.response?.data?.message || err.message}`);
+      fetchProperties();
+    } catch (err) {
+      console.error('Failed to assign tenant', err);
+      alert('Failed to assign tenant');
     } finally {
       setAssigningTenant(false);
     }
@@ -116,18 +113,15 @@ export default function CMTPropertiesPage() {
       setAssigningTenant(false);
     }
   };
-
-
-
-  const handleOpenLandlordModal = async (unit: Unit) => {
+n  const handleOpenLandlordModal = async (unit: Unit) => {
     try {
-      const res = await api.get('/cmt/landlords');
+      const res = await api.get("/cmt/landlords");
       setAvailableLandlords(res.data || []);
       setSelectedUnit(unit);
       setShowLandlordModal(true);
     } catch (err) {
-      console.error('Failed to fetch landlords', err);
-      alert('Failed to fetch available landlords');
+      console.error("Failed to fetch landlords", err);
+      alert("Failed to fetch available landlords");
     }
   };
 
@@ -135,17 +129,13 @@ export default function CMTPropertiesPage() {
     if (!selectedUnit) return;
     setAssigningLandlord(true);
     try {
-      console.log('Assigning landlord:', landlordId, 'to unit:', selectedUnit.id, 'property:', selectedUnit.property.id);
       const url = `/cmt/properties/${selectedUnit.property.id}/units/${selectedUnit.id}/assign-landlord`;
-      console.log('API URL:', url);
       const res = await api.post(url, { landlordId });
-      console.log('Assignment response:', res.data);
       setShowLandlordModal(false);
       setSelectedUnit(null);
       await fetchProperties();
     } catch (err: any) {
-      console.error('Failed to assign landlord:', err);
-      console.error('Error details:', err.response?.data);
+      console.error("Failed to assign landlord:", err);
       alert(`Failed to assign landlord: ${err.response?.data?.message || err.message}`);
     } finally {
       setAssigningLandlord(false);
@@ -154,19 +144,17 @@ export default function CMTPropertiesPage() {
 
   const handleRemoveLandlord = async () => {
     if (!selectedUnit) return;
-    setAssigningLandlord(true);
     try {
       await api.post(`/cmt/properties/${selectedUnit.property.id}/units/${selectedUnit.id}/remove-landlord`);
       setShowLandlordModal(false);
       setSelectedUnit(null);
-      fetchProperties();
+      await fetchProperties();
     } catch (err) {
-      console.error('Failed to remove landlord', err);
-      alert('Failed to remove landlord');
-    } finally {
-      setAssigningLandlord(false);
+      console.error("Failed to remove landlord:", err);
+      alert("Failed to remove landlord");
     }
   };
+
   const handleCreateProperty = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -215,8 +203,8 @@ export default function CMTPropertiesPage() {
   };
 
   const getLandlordDisplay = (unit: Unit) => {
-    if (!unit.landlord) return '-';
-    return `${unit.landlord.firstName} ${unit.landlord.lastName}`;
+    if (!unit.property?.landlord) return '-';
+    return `${unit.property.landlord.firstName} ${unit.property.landlord.lastName}`;
   };
 
   const getTowerName = (unit: Unit) => {
@@ -422,11 +410,8 @@ export default function CMTPropertiesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          onClick={() => handleOpenLandlordModal(unit)}
-                          className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline hover:bg-blue-50 px-2 py-1 rounded transition-colors"
-                        >
-                          {getLandlordDisplay(unit)}
+                        <span className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline">
+                          {showLandlordModal === false {getLandlordDisplay(unit)}{getLandlordDisplay(unit)} <span onClick={() => handleOpenLandlordModal(unit)} className="text-gray-700 cursor-pointer hover:text-brand-blue hover:underline hover:bg-blue-50 px-2 py-1 rounded transition-colors">{getLandlordDisplay(unit)}</span>}
                         </span>
                       </td>
                     </tr>
@@ -563,12 +548,6 @@ export default function CMTPropertiesPage() {
             </button>
           </div>
         </div>
-      )}
-    </div>
-
-
-        </div>
-      )}
 
       {/* Landlord Assignment Modal */}
       {showLandlordModal && selectedUnit && (
@@ -577,14 +556,9 @@ export default function CMTPropertiesPage() {
             <h2 className="text-lg font-bold text-gray-900 mb-4">
               Assign Landlord to {selectedUnit.name}
             </h2>
-
             <div className="space-y-2 max-h-96 overflow-y-auto mb-4">
               {selectedUnit.landlordId && (
-                <button
-                  onClick={handleRemoveLandlord}
-                  disabled={assigningLandlord}
-                  className="w-full text-left px-4 py-3 rounded border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium mb-2"
-                >
+                <button onClick={handleRemoveLandlord} disabled={assigningLandlord} className="w-full text-left px-4 py-3 rounded border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium mb-2">
                   {assigningLandlord ? 'Removing...' : '✕ Remove Current Landlord'}
                 </button>
               )}
@@ -592,35 +566,14 @@ export default function CMTPropertiesPage() {
                 <p className="text-gray-500 text-sm text-center py-4">No landlords available</p>
               ) : (
                 availableLandlords.map((landlord) => (
-                  <button
-                    key={landlord.id}
-                    onClick={() => handleAssignLandlord(landlord.id)}
-                    disabled={assigningLandlord}
-                    className={`w-full text-left px-4 py-3 rounded border transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm ${
-                      selectedUnit.landlordId === landlord.id
-                        ? 'border-brand-blue bg-blue-50 text-brand-blue font-medium'
-                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
+                  <button key={landlord.id} onClick={() => handleAssignLandlord(landlord.id)} disabled={assigningLandlord} className={`w-full text-left px-4 py-3 rounded border transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm ${selectedUnit.landlordId === landlord.id ? 'border-brand-blue bg-blue-50 text-brand-blue font-medium' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
                     {landlord.firstName} {landlord.lastName}
-                    <div className="text-xs text-gray-500 mt-1">
-                      {landlord.user?.email}
-                    </div>
+                    <div className="text-xs text-gray-500 mt-1">{landlord.user?.email}</div>
                   </button>
                 ))
               )}
             </div>
-
-            <button
-              onClick={() => {
-                setShowLandlordModal(false);
-                setSelectedUnit(null);
-              }}
-              disabled={assigningLandlord}
-              className="w-full px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            >
-              Close
-            </button>
+            <button onClick={() => { setShowLandlordModal(false); setSelectedUnit(null); }} disabled={assigningLandlord} className="w-full px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium">Close</button>
           </div>
         </div>
       )}
