@@ -5,18 +5,12 @@ export interface CreatePropertyDto {
   name: string;
   address: string;
   landlordId?: string;
-}
-
-export interface BulkGenerateUnitsDto {
   mode: 'tower' | 'villa'; // tower = X towers, Y floors, Z units per floor | villa = individual units
   towers?: number; // X: number of towers (A, B, C...)
   floors?: number; // Y: number of floors per tower
   unitsPerFloor?: number; // Z: number of units per floor
   towerNames?: string[]; // Custom tower names, defaults to A, B, C...
   startingUnit?: number; // Starting unit number
-}
-
-@Injectable()
 export class PropertiesService {
   constructor(private prisma: PrismaService) {}
 
@@ -264,9 +258,6 @@ export class PropertiesService {
       data: { tenantId: null },
     });
   }
-}
-
-  async assignLandlordToUnit(propertyId: string, unitId: string, userId: string, landlordId: string) {
     try {
       // Verify access
       const cmtId = await this.getCmtIdByUserId(userId);
@@ -327,3 +318,4 @@ export class PropertiesService {
       data: { landlordId: null },
     });
   }
+}
