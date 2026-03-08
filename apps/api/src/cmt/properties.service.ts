@@ -264,7 +264,6 @@ export class PropertiesService {
       data: { tenantId: null },
     });
   }
-}
 
   async assignLandlordToUnit(propertyId: string, unitId: string, userId: string, landlordId: string) {
     try {
@@ -327,3 +326,4 @@ export class PropertiesService {
       data: { landlordId: null },
     });
   }
+}
