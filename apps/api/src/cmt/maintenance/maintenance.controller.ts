@@ -17,6 +17,7 @@ import { User } from '@prisma/client';
 import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
 import { UpdateMaintenanceDto } from './dto/update-maintenance.dto';
 
+@Controller('maintenance')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class MaintenanceController {
   constructor(private maintenanceService: MaintenanceService) {}
