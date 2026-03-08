@@ -48,6 +48,7 @@ export class PropertiesService {
       where: { cmtId },
       include: {
         units: {
+          orderBy: { createdAt: 'asc' },
           include: {
             tenant: {
               include: {
@@ -67,6 +68,7 @@ export class PropertiesService {
       where: { id },
       include: {
         units: {
+          orderBy: { createdAt: 'asc' },
           include: {
             tenant: {
               include: {
