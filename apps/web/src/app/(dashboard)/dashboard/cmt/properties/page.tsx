@@ -398,13 +398,13 @@ export default function CMTPropertiesPage() {
             {addUnitsMode === 'choose' && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                 <button
-                  onClick={() => setAddUnitsMode('single')}
+                  onClick={() => { setAddUnitsMode('single'); if (properties.length > 0) setSelectedProperty(properties[0].id); }}
                   className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-t-lg border-b border-gray-100"
                 >
                   Add One Unit
                 </button>
                 <button
-                  onClick={() => { setAddUnitsMode('bulk'); setBulkStep('type'); }}
+                  onClick={() => { setAddUnitsMode('bulk'); setBulkStep('type'); if (properties.length > 0) setSelectedProperty(properties[0].id); }}
                   className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-b-lg"
                 >
                   Add Bulk
@@ -427,6 +427,7 @@ export default function CMTPropertiesPage() {
         <div className="card border-l-4 border-l-brand-blue">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Add One Unit</h2>
           <form onSubmit={handleAddSingleUnit} className="space-y-4">
+            {properties.length > 1 ? (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Select Property</label>
               <select
@@ -435,7 +436,6 @@ export default function CMTPropertiesPage() {
                 className="input-field"
                 required
               >
-                <option value="">Choose a property...</option>
                 {properties.map((prop) => (
                   <option key={prop.id} value={prop.id}>
                     {prop.name} ({prop.units.length} units)
@@ -443,6 +443,12 @@ export default function CMTPropertiesPage() {
                 ))}
               </select>
             </div>
+            ) : properties.length === 1 ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+              <p className="text-sm text-gray-900 font-medium">{properties[0].name}</p>
+            </div>
+            ) : null}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Unit Name</label>
@@ -509,6 +515,7 @@ export default function CMTPropertiesPage() {
           {/* Step 1: Select Property & Type */}
           {bulkStep === 'type' && (
             <div className="space-y-4">
+              {properties.length > 1 ? (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Select Property</label>
                 <select
@@ -516,7 +523,6 @@ export default function CMTPropertiesPage() {
                   onChange={(e) => setSelectedProperty(e.target.value)}
                   className="input-field"
                 >
-                  <option value="">Choose a property...</option>
                   {properties.map((prop) => (
                     <option key={prop.id} value={prop.id}>
                       {prop.name} ({prop.units.length} units)
@@ -524,6 +530,12 @@ export default function CMTPropertiesPage() {
                   ))}
                 </select>
               </div>
+              ) : properties.length === 1 ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+                <p className="text-sm text-gray-900 font-medium">{properties[0].name}</p>
+              </div>
+              ) : null}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">Property Type</label>
                 <div className="grid grid-cols-2 gap-4">
