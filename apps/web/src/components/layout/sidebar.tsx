@@ -28,7 +28,7 @@ const NAV_ITEMS: Record<Role, NavItem[]> = {
   ],
   CMT: [
     { label: 'Dashboard', href: '/dashboard/cmt', icon: '🏠' },
-    { label: 'Properties', href: '/dashboard/cmt/properties', icon: '🏗️' },
+    { label: 'Units', href: '/dashboard/cmt/properties', icon: '🏗️' },
     { label: 'Tenants', href: '/dashboard/cmt/tenants', icon: '👥' },
     { label: 'Landlords', href: '/dashboard/cmt/landlords', icon: '🔑' },
     { label: 'Service Providers', href: '/dashboard/cmt/service-providers', icon: '🔧' },
