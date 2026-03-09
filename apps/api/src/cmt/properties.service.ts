@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Role } from '../common/enums/role.enum';
+
+import { User } from '@prisma/client';
 
 export interface CreatePropertyDto {
   name: string;
   address: string;
   landlordId?: string;
+  cmtId?: string; // For Super Admin to assign CMT to property
 }
 
 export interface BulkGenerateUnitsDto {
@@ -29,8 +33,17 @@ export class PropertiesService {
     return cmt.id;
   }
 
-  async createProperty(userId: string, data: CreatePropertyDto) {
-    const cmtId = await this.getCmtIdByUserId(userId);
+  async createProperty(userId: string, data: CreatePropertyDto, userRole: Role) {
+    let cmtId: string | undefined;
+
+    // Super Admin can create properties with or without a CMT assignment
+    if (userRole === Role.SUPER_ADMIN) {
+      cmtId = data.cmtId; // Can be undefined if not assigned yet
+    } else {
+      // CMT users must have their own CMT ID
+      cmtId = await this.getCmtIdByUserId(userId);
+    }
+
     return this.prisma.property.create({
       data: {
         name: data.name,
@@ -42,10 +55,20 @@ export class PropertiesService {
     });
   }
 
-  async getProperties(userId: string) {
-    const cmtId = await this.getCmtIdByUserId(userId);
+  async getProperties(userId: string, userRole: Role) {
+    let where: any;
+
+    if (userRole === Role.SUPER_ADMIN) {
+      // Super Admin can see all properties
+      where = {};
+    } else {
+      // CMT users can only see their own properties
+      const cmtId = await this.getCmtIdByUserId(userId);
+      where = { cmtId };
+    }
+
     return this.prisma.property.findMany({
-      where: { cmtId },
+      where,
       include: {
         units: {
           orderBy: { createdAt: 'asc' },
@@ -63,12 +86,12 @@ export class PropertiesService {
           },
         },
         landlord: true,
+        cmt: true,
       },
     });
   }
 
-  async getProperty(id: string, userId: string) {
-    const cmtId = await this.getCmtIdByUserId(userId);
+  async getProperty(id: string, userId: string, userRole: Role) {
     const property = await this.prisma.property.findUnique({
       where: { id },
       include: {
@@ -88,37 +111,65 @@ export class PropertiesService {
           },
         },
         landlord: true,
+        cmt: true,
       },
     });
-    if (!property || property.cmtId !== cmtId) {
-      throw new ForbiddenException('Property not found or access denied');
+
+    if (!property) {
+      throw new NotFoundException('Property not found');
     }
+
+    // Check access: Super Admin can view any property, CMT can only view their own
+    if (userRole !== Role.SUPER_ADMIN) {
+      const cmtId = await this.getCmtIdByUserId(userId);
+      if (property.cmtId !== cmtId) {
+        throw new ForbiddenException('Property not found or access denied');
+      }
+    }
+
     return property;
   }
 
-  async updateProperty(id: string, userId: string, data: Partial<CreatePropertyDto>) {
-    const cmtId = await this.getCmtIdByUserId(userId);
+  async updateProperty(id: string, userId: string, data: Partial<CreatePropertyDto>, userRole: Role) {
     const property = await this.prisma.property.findUnique({ where: { id } });
-    if (!property || property.cmtId !== cmtId) {
-      throw new ForbiddenException('Property not found or access denied');
+    if (!property) {
+      throw new NotFoundException('Property not found');
     }
+
+    // Check access: Super Admin can update any property, CMT can only update their own
+    if (userRole !== Role.SUPER_ADMIN) {
+      const cmtId = await this.getCmtIdByUserId(userId);
+      if (property.cmtId !== cmtId) {
+        throw new ForbiddenException('Property not found or access denied');
+      }
+    }
+
     return this.prisma.property.update({
       where: { id },
       data: {
         name: data.name,
         address: data.address,
         landlordId: data.landlordId,
+        cmtId: data.cmtId,
       },
       include: { units: true },
     });
   }
 
-  async deleteProperty(id: string, userId: string) {
-    const cmtId = await this.getCmtIdByUserId(userId);
+  async deleteProperty(id: string, userId: string, userRole: Role) {
     const property = await this.prisma.property.findUnique({ where: { id } });
-    if (!property || property.cmtId !== cmtId) {
-      throw new ForbiddenException('Property not found or access denied');
+    if (!property) {
+      throw new NotFoundException('Property not found');
     }
+
+    // Check access: Super Admin can delete any property, CMT can only delete their own
+    if (userRole !== Role.SUPER_ADMIN) {
+      const cmtId = await this.getCmtIdByUserId(userId);
+      if (property.cmtId !== cmtId) {
+        throw new ForbiddenException('Property not found or access denied');
+      }
+    }
+
     return this.prisma.property.delete({
       where: { id },
     });
@@ -128,15 +179,10 @@ export class PropertiesService {
     propertyId: string,
     userId: string,
     config: BulkGenerateUnitsDto,
+    userRole: Role,
   ) {
-    const cmtId = await this.getCmtIdByUserId(userId);
-    const property = await this.prisma.property.findUnique({
-      where: { id: propertyId },
-    });
-
-    if (!property || property.cmtId !== cmtId) {
-      throw new ForbiddenException('Property not found or access denied');
-    }
+    // Verify access through getProperty
+    await this.getProperty(propertyId, userId, userRole);
 
     interface UnitData {
       propertyId: string;
@@ -179,9 +225,9 @@ export class PropertiesService {
     return { generated: result.count };
   }
 
-  async getUnits(propertyId: string, userId: string) {
+  async getUnits(propertyId: string, userId: string, userRole: Role) {
     // Verify access
-    await this.getProperty(propertyId, userId);
+    await this.getProperty(propertyId, userId, userRole);
 
     return this.prisma.unit.findMany({
       where: { propertyId },
@@ -346,6 +392,31 @@ export class PropertiesService {
     return this.prisma.unit.update({
       where: { id: unitId },
       data: { landlordId: null },
+    });
+  }
+
+  async assignCmtToProperty(propertyId: string, cmtId: string) {
+    // Verify that CMT exists and is approved
+    const cmt = await this.prisma.cmtProfile.findUnique({
+      where: { id: cmtId },
+    });
+    if (!cmt || cmt.status !== 'APPROVED') {
+      throw new ForbiddenException('CMT not found or not approved');
+    }
+
+    // Verify property exists
+    const property = await this.prisma.property.findUnique({
+      where: { id: propertyId },
+    });
+    if (!property) {
+      throw new NotFoundException('Property not found');
+    }
+
+    // Assign CMT to property
+    return this.prisma.property.update({
+      where: { id: propertyId },
+      data: { cmtId },
+      include: { cmt: true, units: true },
     });
   }
 }

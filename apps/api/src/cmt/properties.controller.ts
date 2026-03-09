@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -13,34 +13,35 @@ import { PropertiesService, CreatePropertyDto, BulkGenerateUnitsDto } from './pr
 export class PropertiesController {
   constructor(private propertiesService: PropertiesService) {}
 
-  // Get all properties for the CMT
+  // Get all properties for the CMT or Super Admin
   @Get()
   async getProperties(@CurrentUser() user: User) {
-    return this.propertiesService.getProperties(user.id);
+    return this.propertiesService.getProperties(user.id, user.role as Role);
   }
 
-  // Create a new property
+  // Create a new property (Super Admin only)
   @Post()
+  @Roles(Role.SUPER_ADMIN)
   async createProperty(@CurrentUser() user: User, @Body() data: CreatePropertyDto) {
-    return this.propertiesService.createProperty(user.id, data);
+    return this.propertiesService.createProperty(user.id, data, user.role as Role);
   }
 
   // Get a specific property
   @Get(':id')
   async getProperty(@CurrentUser() user: User, @Param('id') id: string) {
-    return this.propertiesService.getProperty(id, user.id);
+    return this.propertiesService.getProperty(id, user.id, user.role as Role);
   }
 
   // Update property details
   @Patch(':id')
   async updateProperty(@CurrentUser() user: User, @Param('id') id: string, @Body() data: Partial<CreatePropertyDto>) {
-    return this.propertiesService.updateProperty(id, user.id, data);
+    return this.propertiesService.updateProperty(id, user.id, data, user.role as Role);
   }
 
   // Delete property
   @Delete(':id')
   async deleteProperty(@CurrentUser() user: User, @Param('id') id: string) {
-    return this.propertiesService.deleteProperty(id, user.id);
+    return this.propertiesService.deleteProperty(id, user.id, user.role as Role);
   }
 
   // Bulk generate units with X*Y*Z naming
@@ -50,13 +51,13 @@ export class PropertiesController {
     @Param('id') propertyId: string,
     @Body() config: BulkGenerateUnitsDto,
   ) {
-    return this.propertiesService.generateUnitsForProperty(propertyId, user.id, config);
+    return this.propertiesService.generateUnitsForProperty(propertyId, user.id, config, user.role as Role);
   }
 
   // Get all units in a property
   @Get(':id/units')
   async getUnits(@CurrentUser() user: User, @Param('id') propertyId: string) {
-    return this.propertiesService.getUnits(propertyId, user.id);
+    return this.propertiesService.getUnits(propertyId, user.id, user.role as Role);
   }
 
   // Update unit name
@@ -110,5 +111,16 @@ export class PropertiesController {
     @Param('unitId') unitId: string,
   ) {
     return this.propertiesService.removeLandlordFromUnit(propertyId, unitId, user.id);
+  }
+
+  // Assign CMT admin to property (Super Admin only)
+  @Patch(':id/assign-cmt')
+  @Roles(Role.SUPER_ADMIN)
+  async assignCmtToProperty(
+    @CurrentUser() user: User,
+    @Param('id') propertyId: string,
+    @Body('cmtId') cmtId: string,
+  ) {
+    return this.propertiesService.assignCmtToProperty(propertyId, cmtId);
   }
 }

@@ -4,6 +4,8 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
+import { getRole } from '@/lib/auth';
+import type { Role } from '@/types';
 
 interface Unit {
   id: string;
@@ -63,8 +65,10 @@ export default function CMTPropertiesPage() {
   const [assigningLandlord, setAssigningLandlord] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [userRole, setUserRole] = useState<Role | null>(null);
 
   useEffect(() => {
+    setUserRole(getRole());
     fetchProperties();
   }, []);
 
@@ -344,12 +348,14 @@ export default function CMTPropertiesPage() {
           >
             {showBulkGenerate ? 'Cancel' : '⚡ Generate Units'}
           </button>
-          <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="btn-primary"
-          >
-            {showCreateForm ? 'Cancel' : '+ Create Property'}
-          </button>
+          {userRole === 'SUPER_ADMIN' && (
+            <button
+              onClick={() => setShowCreateForm(!showCreateForm)}
+              className="btn-primary"
+            >
+              {showCreateForm ? 'Cancel' : '+ Create Property'}
+            </button>
+          )}
         </div>
       </div>
 
