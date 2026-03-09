@@ -80,6 +80,17 @@ export default function CMTPropertiesPage() {
     fetchProperties();
   }, []);
 
+  // Auto-select first property when properties load
+  useEffect(() => {
+    if (properties.length > 0 && !selectedProperty) {
+      setSelectedProperty(properties[0].id);
+    }
+  }, [properties, selectedProperty]);
+
+  // Reliable property ID: always resolves even if state didn't update
+  const activePropertyId = selectedProperty || (properties.length > 0 ? properties[0].id : '');
+  const activePropertyName = properties.find(p => p.id === activePropertyId)?.name || '';
+
   const fetchProperties = async () => {
     try {
       const res = await api.get('/cmt/properties');
@@ -242,14 +253,13 @@ export default function CMTPropertiesPage() {
   };
 
   const handleGenerateUnits = async () => {
-    const propertyId = selectedProperty || (properties.length === 1 ? properties[0].id : '');
-    if (!propertyId) {
+    if (!activePropertyId) {
       alert('Please select a property');
       return;
     }
     setGenerating(true);
     try {
-      const res = await api.post(`/cmt/properties/${propertyId}/generate-units`, {
+      const res = await api.post(`/cmt/properties/${activePropertyId}/generate-units`, {
         mode: bulkType,
         towers: generatorValues.towers,
         floors: generatorValues.floors,
@@ -271,8 +281,8 @@ export default function CMTPropertiesPage() {
 
   const handleAddSingleUnit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const propertyId = selectedProperty || (properties.length === 1 ? properties[0].id : '');
-    if (!propertyId || !singleUnitName.trim()) return;
+    if (!activePropertyId || !singleUnitName.trim()) return;
+    const propertyId = activePropertyId;
     setAddingSingleUnit(true);
     try {
       await api.post(`/cmt/properties/${propertyId}/generate-units`, {
@@ -447,7 +457,7 @@ export default function CMTPropertiesPage() {
             ) : properties.length === 1 ? (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
-              <p className="text-sm text-gray-900 font-medium">{properties[0].name}</p>
+              <p className="text-sm text-gray-900 font-medium">{activePropertyName}</p>
             </div>
             ) : null}
             <div className="grid grid-cols-2 gap-4">
@@ -534,7 +544,7 @@ export default function CMTPropertiesPage() {
               ) : properties.length === 1 ? (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
-                <p className="text-sm text-gray-900 font-medium">{properties[0].name}</p>
+                <p className="text-sm text-gray-900 font-medium">{activePropertyName}</p>
               </div>
               ) : null}
               <div>
@@ -661,7 +671,7 @@ export default function CMTPropertiesPage() {
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                   <span className="text-gray-500">Property:</span>
                   <span className="text-gray-900 font-medium">
-                    {properties.find(p => p.id === selectedProperty)?.name || (properties.length === 1 ? properties[0].name : '-')}
+                    {activePropertyName || '-'}
                   </span>
                   <span className="text-gray-500">Type:</span>
                   <span className="text-gray-900 font-medium">{bulkType === 'tower' ? 'Towers' : 'Villas'}</span>
