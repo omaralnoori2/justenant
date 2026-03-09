@@ -44,6 +44,12 @@ export class PropertiesController {
     return this.propertiesService.deleteProperty(id, user.id, user.role as Role);
   }
 
+  // Get existing tower/area letters for a property
+  @Get(':id/existing-towers')
+  async getExistingTowers(@CurrentUser() user: User, @Param('id') propertyId: string) {
+    return this.propertiesService.getExistingTowers(propertyId, user.id, user.role as Role);
+  }
+
   // Bulk generate units with X*Y*Z naming
   @Post(':id/generate-units')
   async generateUnits(

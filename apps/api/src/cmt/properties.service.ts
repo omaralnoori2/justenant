@@ -20,12 +20,13 @@ export interface CreatePropertyDto {
 }
 
 export interface BulkGenerateUnitsDto {
-  mode: 'tower' | 'villa'; // tower = X towers, Y floors, Z units per floor | villa = individual units
-  towers?: number; // X: number of towers (A, B, C...)
-  floors?: number; // Y: number of floors per tower
-  unitsPerFloor?: number; // Z: number of units per floor
-  towerNames?: string[]; // Custom tower names, defaults to A, B, C...
-  startingUnit?: number; // Starting unit number
+  mode: 'tower' | 'villa';
+  towers?: number;
+  floors?: number;
+  unitsPerFloor?: number;
+  towerNames?: string[];
+  startingUnit?: number;
+  duplicateAction?: 'skip' | 'next'; // skip = skip duplicates, next = continue from next available tower/area letter
 }
 
 @Injectable()
@@ -194,14 +195,52 @@ export class PropertiesService {
     });
   }
 
+  // Find which tower/area letters already exist for a property
+  async getExistingTowers(propertyId: string, userId: string, userRole: Role) {
+    await this.getProperty(propertyId, userId, userRole);
+
+    const units = await this.prisma.unit.findMany({
+      where: { propertyId },
+      select: { name: true },
+    });
+
+    const towerLetters = new Set<string>();
+    const areaLetters = new Set<string>();
+    for (const u of units) {
+      const towerMatch = u.name.match(/Tower\s([A-Z]+)$/);
+      if (towerMatch) towerLetters.add(towerMatch[1]);
+      const areaMatch = u.name.match(/Area\s([A-Z]+)$/);
+      if (areaMatch) areaLetters.add(areaMatch[1]);
+    }
+
+    // Find next available letter
+    const findNextLetter = (existing: Set<string>): string => {
+      for (let i = 0; i < 26; i++) {
+        const letter = String.fromCharCode(65 + i);
+        if (!existing.has(letter)) return letter;
+      }
+      return String.fromCharCode(65 + existing.size);
+    };
+
+    return {
+      existingTowers: Array.from(towerLetters).sort(),
+      existingAreas: Array.from(areaLetters).sort(),
+      nextTowerLetter: findNextLetter(towerLetters),
+      nextAreaLetter: findNextLetter(areaLetters),
+      totalUnits: units.length,
+    };
+  }
+
   async generateUnitsForProperty(
     propertyId: string,
     userId: string,
     config: BulkGenerateUnitsDto,
     userRole: Role,
   ) {
-    // Verify access through getProperty
     await this.getProperty(propertyId, userId, userRole);
+
+    // Get existing tower/area letters to detect conflicts
+    const existing = await this.getExistingTowers(propertyId, userId, userRole);
 
     interface UnitData {
       propertyId: string;
@@ -215,66 +254,94 @@ export class PropertiesService {
       const towers = config.towers || 1;
       const floors = config.floors || 10;
       const unitsPerFloor = config.unitsPerFloor || 5;
-      const towerNames = config.towerNames || Array.from({ length: towers }, (_, i) =>
-        String.fromCharCode(65 + i),
-      );
 
-      // Generate X*Y*Z units with Tower naming
-      // Format: Flat [floor][unit] Tower [Letter]
+      let towerNames: string[];
+      if (config.towerNames) {
+        towerNames = config.towerNames;
+      } else if (config.duplicateAction === 'next' && existing.existingTowers.length > 0) {
+        // Start from next available letter
+        const startCode = existing.nextTowerLetter.charCodeAt(0);
+        towerNames = Array.from({ length: towers }, (_, i) =>
+          String.fromCharCode(startCode + i),
+        );
+      } else {
+        towerNames = Array.from({ length: towers }, (_, i) =>
+          String.fromCharCode(65 + i),
+        );
+      }
+
       for (let t = 0; t < towers; t++) {
         for (let f = 1; f <= floors; f++) {
           for (let u = 1; u <= unitsPerFloor; u++) {
             const unitName = `Flat ${f}${u.toString().padStart(2, '0')} Tower ${towerNames[t]}`;
-            units.push({
-              propertyId,
-              name: unitName,
-              floor: f,
-              unitNumber: u,
-            });
+            units.push({ propertyId, name: unitName, floor: f, unitNumber: u });
           }
         }
       }
     } else if (config.mode === 'villa') {
-      const areas = config.towers || 1; // reuse towers field as number of areas
-      const blocks = config.floors || 1; // reuse floors field as number of blocks
-      const villasPerBlock = config.unitsPerFloor || 1; // reuse unitsPerFloor as villas per block
-      const areaNames = config.towerNames || Array.from({ length: areas }, (_, i) =>
-        String.fromCharCode(65 + i),
-      );
+      const areas = config.towers || 1;
+      const blocks = config.floors || 1;
+      const villasPerBlock = config.unitsPerFloor || 1;
 
-      // Generate villas: Villa [block][unit] Area [Letter]
+      let areaNames: string[];
+      if (config.towerNames) {
+        areaNames = config.towerNames;
+      } else if (config.duplicateAction === 'next' && existing.existingAreas.length > 0) {
+        const startCode = existing.nextAreaLetter.charCodeAt(0);
+        areaNames = Array.from({ length: areas }, (_, i) =>
+          String.fromCharCode(startCode + i),
+        );
+      } else {
+        areaNames = Array.from({ length: areas }, (_, i) =>
+          String.fromCharCode(65 + i),
+        );
+      }
+
       for (let a = 0; a < areas; a++) {
         for (let b = 1; b <= blocks; b++) {
           for (let v = 1; v <= villasPerBlock; v++) {
             const villaName = `Villa ${b}${v.toString().padStart(2, '0')} Area ${areaNames[a]}`;
-            units.push({
-              propertyId,
-              name: villaName,
-              floor: b,
-              unitNumber: v,
-            });
+            units.push({ propertyId, name: villaName, floor: b, unitNumber: v });
           }
         }
       }
     }
 
-    // Filter out units whose names already exist in this property
+    // Check for duplicates
     const existingUnits = await this.prisma.unit.findMany({
       where: { propertyId },
       select: { name: true },
     });
     const existingNames = new Set(existingUnits.map(u => u.name));
-    const newUnits = units.filter(u => !existingNames.has(u.name));
+    const hasDuplicates = units.some(u => existingNames.has(u.name));
 
-    if (newUnits.length === 0) {
+    // If duplicates found and no action specified, return conflict info for frontend to ask user
+    if (hasDuplicates && !config.duplicateAction) {
+      const duplicateCount = units.filter(u => existingNames.has(u.name)).length;
+      const label = config.mode === 'tower' ? 'Tower' : 'Area';
+      const nextLetter = config.mode === 'tower' ? existing.nextTowerLetter : existing.nextAreaLetter;
+      const existingLetters = config.mode === 'tower' ? existing.existingTowers : existing.existingAreas;
+      return {
+        conflict: true,
+        generated: 0,
+        duplicateCount,
+        existingLetters,
+        nextLetter,
+        message: `${duplicateCount} units already exist (${label} ${existingLetters.join(', ')}). You can skip duplicates or continue from ${label} ${nextLetter}.`,
+      };
+    }
+
+    // Skip duplicates if action is 'skip'
+    const unitsToCreate = config.duplicateAction === 'skip'
+      ? units.filter(u => !existingNames.has(u.name))
+      : units;
+
+    if (unitsToCreate.length === 0) {
       return { generated: 0, skipped: units.length, message: 'All units already exist' };
     }
 
-    const result = await this.prisma.unit.createMany({
-      data: newUnits,
-    });
-
-    const skipped = units.length - newUnits.length;
+    const result = await this.prisma.unit.createMany({ data: unitsToCreate });
+    const skipped = units.length - unitsToCreate.length;
     return { generated: result.count, skipped };
   }
 

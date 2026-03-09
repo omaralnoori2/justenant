@@ -81,6 +81,12 @@ export default function CMTPropertiesPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [userRole, setUserRole] = useState<Role | null>(null);
   const [loadingUnits, setLoadingUnits] = useState(false);
+  const [conflictInfo, setConflictInfo] = useState<{
+    message: string;
+    existingLetters: string[];
+    nextLetter: string;
+    duplicateCount: number;
+  } | null>(null);
 
   useEffect(() => {
     setUserRole(getRole());
@@ -312,21 +318,39 @@ export default function CMTPropertiesPage() {
     }
   };
 
-  const handleGenerateUnits = async () => {
+  const handleGenerateUnits = async (duplicateAction?: 'skip' | 'next') => {
     const wp = getWorkingProperty();
     if (!wp) {
       alert('No property selected. Please ensure you have a property before generating units.');
       return;
     }
     setGenerating(true);
+    setConflictInfo(null);
     try {
       const res = await api.post(`/cmt/properties/${wp.id}/generate-units`, {
         mode: bulkType,
         towers: generatorValues.towers,
         floors: generatorValues.floors,
         unitsPerFloor: generatorValues.unitsPerFloor,
+        duplicateAction,
       });
-      alert(`Generated ${res.data.generated} units!${res.data.skipped ? ` (${res.data.skipped} duplicates skipped)` : ''}`);
+
+      // API detected duplicates and wants user to choose
+      if (res.data.conflict) {
+        setConflictInfo({
+          message: res.data.message,
+          existingLetters: res.data.existingLetters,
+          nextLetter: res.data.nextLetter,
+          duplicateCount: res.data.duplicateCount,
+        });
+        setGenerating(false);
+        return;
+      }
+
+      const msg = res.data.generated > 0
+        ? `Generated ${res.data.generated} units!${res.data.skipped ? ` (${res.data.skipped} duplicates skipped)` : ''}`
+        : 'No new units to generate — all already exist.';
+      alert(msg);
       setAddUnitsMode('none');
       setBulkStep('type');
       setSelectedProperty('');
@@ -770,23 +794,58 @@ export default function CMTPropertiesPage() {
                   }
                 </div>
               </div>
-              <div className="flex justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => setBulkStep('config')}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={handleGenerateUnits}
-                  disabled={generating || !getWorkingProperty()}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {generating ? 'Generating...' : 'Confirm & Generate'}
-                </button>
-              </div>
+              {/* Conflict resolution UI */}
+              {conflictInfo && (
+                <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 space-y-3">
+                  <h4 className="font-semibold text-yellow-800">Duplicate Units Detected</h4>
+                  <p className="text-sm text-yellow-700">{conflictInfo.message}</p>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateUnits('next')}
+                      disabled={generating}
+                      className="flex-1 px-4 py-3 rounded-lg bg-brand-blue text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {generating ? 'Generating...' : `Continue from ${bulkType === 'tower' ? 'Tower' : 'Area'} ${conflictInfo.nextLetter}`}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateUnits('skip')}
+                      disabled={generating}
+                      className="flex-1 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {generating ? 'Generating...' : `Skip ${conflictInfo.duplicateCount} Duplicates`}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setConflictInfo(null)}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {!conflictInfo && (
+                <div className="flex justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBulkStep('config')}
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateUnits()}
+                    disabled={generating || !getWorkingProperty()}
+                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generating ? 'Generating...' : 'Confirm & Generate'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
