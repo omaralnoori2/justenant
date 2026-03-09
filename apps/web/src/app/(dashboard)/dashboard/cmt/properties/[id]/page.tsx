@@ -69,7 +69,7 @@ export default function PropertyDetailPage() {
         floors: floorCount,
         unitsPerFloor,
       });
-      alert(`Generated ${res.data.generated} units!`);
+      alert(`Generated ${res.data.generated} units!${res.data.skipped ? ` (${res.data.skipped} duplicates skipped)` : ''}`);
       fetchProperty();
     } catch (err: any) {
       console.error('Failed to generate units', err);

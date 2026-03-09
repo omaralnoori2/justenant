@@ -258,12 +258,24 @@ export class PropertiesService {
       }
     }
 
-    // Bulk create units (append to existing)
+    // Filter out units whose names already exist in this property
+    const existingUnits = await this.prisma.unit.findMany({
+      where: { propertyId },
+      select: { name: true },
+    });
+    const existingNames = new Set(existingUnits.map(u => u.name));
+    const newUnits = units.filter(u => !existingNames.has(u.name));
+
+    if (newUnits.length === 0) {
+      return { generated: 0, skipped: units.length, message: 'All units already exist' };
+    }
+
     const result = await this.prisma.unit.createMany({
-      data: units,
+      data: newUnits,
     });
 
-    return { generated: result.count };
+    const skipped = units.length - newUnits.length;
+    return { generated: result.count, skipped };
   }
 
   async getUnits(propertyId: string, userId: string, userRole: Role, page = 1, limit = 50) {

@@ -326,7 +326,7 @@ export default function CMTPropertiesPage() {
         floors: generatorValues.floors,
         unitsPerFloor: generatorValues.unitsPerFloor,
       });
-      alert(`Generated ${res.data.generated} units!`);
+      alert(`Generated ${res.data.generated} units!${res.data.skipped ? ` (${res.data.skipped} duplicates skipped)` : ''}`);
       setAddUnitsMode('none');
       setBulkStep('type');
       setSelectedProperty('');
