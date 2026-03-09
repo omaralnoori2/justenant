@@ -242,13 +242,14 @@ export default function CMTPropertiesPage() {
   };
 
   const handleGenerateUnits = async () => {
-    if (!selectedProperty) {
+    const propertyId = selectedProperty || (properties.length === 1 ? properties[0].id : '');
+    if (!propertyId) {
       alert('Please select a property');
       return;
     }
     setGenerating(true);
     try {
-      const res = await api.post(`/cmt/properties/${selectedProperty}/generate-units`, {
+      const res = await api.post(`/cmt/properties/${propertyId}/generate-units`, {
         mode: bulkType,
         towers: generatorValues.towers,
         floors: generatorValues.floors,
@@ -270,10 +271,10 @@ export default function CMTPropertiesPage() {
 
   const handleAddSingleUnit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!selectedProperty || !singleUnitName.trim()) return;
+    const propertyId = selectedProperty || (properties.length === 1 ? properties[0].id : '');
+    if (!propertyId || !singleUnitName.trim()) return;
     setAddingSingleUnit(true);
     try {
-      const propertyId = selectedProperty;
       await api.post(`/cmt/properties/${propertyId}/generate-units`, {
         mode: 'tower',
         towers: 1,
@@ -578,7 +579,7 @@ export default function CMTPropertiesPage() {
                 <button
                   type="button"
                   onClick={() => setBulkStep('config')}
-                  disabled={!selectedProperty}
+                  disabled={!selectedProperty && properties.length !== 1}
                   className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
@@ -661,7 +662,7 @@ export default function CMTPropertiesPage() {
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                   <span className="text-gray-500">Property:</span>
                   <span className="text-gray-900 font-medium">
-                    {properties.find(p => p.id === selectedProperty)?.name || '-'}
+                    {properties.find(p => p.id === selectedProperty)?.name || (properties.length === 1 ? properties[0].name : '-')}
                   </span>
                   <span className="text-gray-500">Type:</span>
                   <span className="text-gray-900 font-medium">{bulkType === 'tower' ? 'Towers' : 'Villas'}</span>
