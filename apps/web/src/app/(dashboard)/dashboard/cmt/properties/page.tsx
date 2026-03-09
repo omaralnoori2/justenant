@@ -578,9 +578,8 @@ export default function CMTPropertiesPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBulkStep('config')}
-                  disabled={properties.length === 0}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => { if (properties.length > 0 && !selectedProperty) setSelectedProperty(properties[0].id); setBulkStep('config'); }}
+                  className="btn-primary"
                 >
                   Next
                 </button>
