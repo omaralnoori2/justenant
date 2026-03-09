@@ -68,7 +68,7 @@ export class PropertiesController {
     @Param('unitId') unitId: string,
     @Body('name') name: string,
   ) {
-    return this.propertiesService.updateUnitName(propertyId, unitId, user.id, name);
+    return this.propertiesService.updateUnitName(propertyId, unitId, user.id, user.role as Role, name);
   }
 
   // Assign tenant to unit

@@ -570,43 +570,52 @@ export default function CMTPropertiesPage() {
       ) : (
         <>
           <div className="card overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '60px' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '18%' }} />
+              </colgroup>
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-4 py-3 text-left font-medium text-gray-700 w-12">No.</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-700">No.</th>
                   <th
                     onClick={() => handleSort('property')}
-                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors truncate"
                   >
                     Property {sortColumn === 'property' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th
                     onClick={() => handleSort('name')}
-                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors truncate"
                   >
                     Unit Name {sortColumn === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th
                     onClick={() => handleSort('tower')}
-                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors truncate"
                   >
                     Tower {sortColumn === 'tower' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th
                     onClick={() => handleSort('status')}
-                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors truncate"
                   >
                     Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th
                     onClick={() => handleSort('tenant')}
-                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors truncate"
                   >
                     Tenant {sortColumn === 'tenant' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th
                     onClick={() => handleSort('landlord')}
-                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors truncate"
                   >
                     Landlord {sortColumn === 'landlord' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
@@ -615,12 +624,12 @@ export default function CMTPropertiesPage() {
               <tbody>
                 {paginatedUnits.map((unit, index) => (
                   <tr key={unit.id} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-600 font-medium w-12">
+                    <td className="px-4 py-3 text-gray-600 font-medium">
                       {startIndex + index + 1}
                     </td>
-                    <td className="px-4 py-3 text-gray-900">{unit.property.name}</td>
-                    <td className="px-4 py-3 text-gray-900">{unit.name}</td>
-                    <td className="px-4 py-3 text-gray-600 font-medium">{getTowerName(unit)}</td>
+                    <td className="px-4 py-3 text-gray-900 truncate" title={unit.property.name}>{unit.property.name}</td>
+                    <td className="px-4 py-3 text-gray-900 truncate" title={unit.name}>{unit.name}</td>
+                    <td className="px-4 py-3 text-gray-600 font-medium truncate">{getTowerName(unit)}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`text-xs font-medium px-2 py-1 rounded-full ${

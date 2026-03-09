@@ -293,9 +293,9 @@ export class PropertiesService {
     });
   }
 
-  async updateUnitName(propertyId: string, unitId: string, userId: string, name: string) {
+  async updateUnitName(propertyId: string, unitId: string, userId: string, userRole: Role, name: string) {
     // Verify access
-    await this.getProperty(propertyId, userId);
+    await this.getProperty(propertyId, userId, userRole);
 
     const unit = await this.prisma.unit.findUnique({
       where: { id: unitId },
