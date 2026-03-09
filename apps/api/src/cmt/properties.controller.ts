@@ -9,7 +9,7 @@ import { PropertiesService, CreatePropertyDto, BulkGenerateUnitsDto } from './pr
 
 @Controller('cmt/properties')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.CMT)
+@Roles(Role.CMT, Role.SUPER_ADMIN)
 export class PropertiesController {
   constructor(private propertiesService: PropertiesService) {}
 
