@@ -20,7 +20,7 @@ interface Property {
   name: string;
   address: string;
   type: string;
-  units: Unit[];
+  _count?: { units: number };
 }
 
 export default function PropertyDetailPage() {
@@ -28,6 +28,8 @@ export default function PropertyDetailPage() {
   const propertyId = params?.id as string;
 
   const [property, setProperty] = useState<Property | null>(null);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [totalUnitCount, setTotalUnitCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [towerCount, setTowerCount] = useState(10);
@@ -42,8 +44,13 @@ export default function PropertyDetailPage() {
 
   const fetchProperty = async () => {
     try {
-      const res = await api.get(`/cmt/properties/${propertyId}`);
-      setProperty(res.data);
+      const [propRes, unitsRes] = await Promise.all([
+        api.get(`/cmt/properties/${propertyId}`),
+        api.get(`/cmt/properties/${propertyId}/units?page=1&limit=20`),
+      ]);
+      setProperty(propRes.data);
+      setUnits(unitsRes.data.units);
+      setTotalUnitCount(unitsRes.data.total);
     } catch (err) {
       console.error('Failed to fetch property', err);
       setProperty(null);
@@ -64,9 +71,9 @@ export default function PropertyDetailPage() {
       });
       alert(`Generated ${res.data.generated} units!`);
       fetchProperty();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to generate units', err);
-      alert('Failed to generate units');
+      alert(`Failed to generate units: ${err.response?.data?.message || err.message}`);
     } finally {
       setGenerating(false);
     }
@@ -78,7 +85,7 @@ export default function PropertyDetailPage() {
     return (
       <div className="space-y-6">
         <Link href="/dashboard/cmt/properties" className="text-brand hover:underline text-sm">
-          ← Back to Properties
+          &larr; Back to Properties
         </Link>
         <div className="card">
           <p className="text-gray-500">Property not found</p>
@@ -93,7 +100,7 @@ export default function PropertyDetailPage() {
     <div className="space-y-6">
       <div>
         <Link href="/dashboard/cmt/properties" className="text-brand hover:underline text-sm mb-2 inline-block">
-          ← Back to Properties
+          &larr; Back to Properties
         </Link>
         <h1 className="text-2xl font-bold text-gray-900">{property.name}</h1>
         <p className="text-gray-600 text-sm mt-1">{property.address}</p>
@@ -106,11 +113,11 @@ export default function PropertyDetailPage() {
         </div>
         <div className="card">
           <p className="text-sm text-gray-500">Total Units</p>
-          <p className="text-xl font-bold text-gray-900 mt-2">{property.units.length}</p>
+          <p className="text-xl font-bold text-gray-900 mt-2">{totalUnitCount.toLocaleString()}</p>
         </div>
         <div className="card">
           <p className="text-sm text-gray-500">Occupied Units</p>
-          <p className="text-xl font-bold text-gray-900 mt-2">{property.units.filter(u => u.isOccupied).length}</p>
+          <p className="text-xl font-bold text-gray-900 mt-2">{units.filter(u => u.isOccupied).length}</p>
         </div>
       </div>
 
@@ -129,6 +136,7 @@ export default function PropertyDetailPage() {
               <input
                 type="number"
                 min="1"
+                max="26"
                 value={towerCount}
                 onChange={(e) => setTowerCount(parseInt(e.target.value) || 1)}
                 className="input-field"
@@ -167,7 +175,7 @@ export default function PropertyDetailPage() {
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm font-semibold text-blue-900">
-              Total units: {towerCount} × {floorCount} × {unitsPerFloor} = {totalUnitsToGenerate.toLocaleString()} units
+              Total units: {towerCount} &times; {floorCount} &times; {unitsPerFloor} = {totalUnitsToGenerate.toLocaleString()} units
             </p>
           </div>
 
@@ -181,9 +189,9 @@ export default function PropertyDetailPage() {
         </form>
       </div>
 
-      {property.units.length > 0 && (
+      {units.length > 0 && (
         <div className="card">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Units ({property.units.length})</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Units ({totalUnitCount.toLocaleString()})</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b-2 border-gray-200">
@@ -194,10 +202,10 @@ export default function PropertyDetailPage() {
                 </tr>
               </thead>
               <tbody>
-                {property.units.slice(0, 20).map((unit) => (
+                {units.map((unit) => (
                   <tr key={unit.id} className="border-b border-gray-200 hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium text-gray-900">{unit.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{unit.floor || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{unit.floor || '\u2014'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                         unit.isOccupied ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
@@ -209,9 +217,12 @@ export default function PropertyDetailPage() {
                 ))}
               </tbody>
             </table>
-            {property.units.length > 20 && (
+            {totalUnitCount > units.length && (
               <p className="px-4 py-3 text-sm text-gray-500">
-                Showing 20 of {property.units.length} units
+                Showing {units.length} of {totalUnitCount.toLocaleString()} units.{' '}
+                <Link href="/dashboard/cmt/properties" className="text-brand-blue hover:underline">
+                  View all in spreadsheet
+                </Link>
               </p>
             )}
           </div>

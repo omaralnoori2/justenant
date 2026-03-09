@@ -117,21 +117,7 @@ export class PropertiesService {
     return this.prisma.property.findMany({
       where,
       include: {
-        units: {
-          orderBy: { createdAt: 'asc' },
-          include: {
-            tenant: {
-              include: {
-                user: { select: { id: true, email: true } },
-              },
-            },
-            landlord: {
-              include: {
-                user: { select: { id: true, email: true } },
-              },
-            },
-          },
-        },
+        _count: { select: { units: true } },
         landlord: true,
         cmt: true,
       },
@@ -142,21 +128,7 @@ export class PropertiesService {
     const property = await this.prisma.property.findUnique({
       where: { id },
       include: {
-        units: {
-          orderBy: { createdAt: 'asc' },
-          include: {
-            tenant: {
-              include: {
-                user: { select: { id: true, email: true } },
-              },
-            },
-            landlord: {
-              include: {
-                user: { select: { id: true, email: true } },
-              },
-            },
-          },
-        },
+        _count: { select: { units: true } },
         landlord: true,
         cmt: true,
       },
@@ -294,25 +266,34 @@ export class PropertiesService {
     return { generated: result.count };
   }
 
-  async getUnits(propertyId: string, userId: string, userRole: Role) {
+  async getUnits(propertyId: string, userId: string, userRole: Role, page = 1, limit = 50) {
     // Verify access
     await this.getProperty(propertyId, userId, userRole);
 
-    return this.prisma.unit.findMany({
-      where: { propertyId },
-      include: {
-        tenant: {
-          include: {
-            user: { select: { id: true, email: true } },
+    const skip = (page - 1) * limit;
+    const [units, total] = await Promise.all([
+      this.prisma.unit.findMany({
+        where: { propertyId },
+        orderBy: { createdAt: 'asc' },
+        skip,
+        take: limit,
+        include: {
+          tenant: {
+            include: {
+              user: { select: { id: true, email: true } },
+            },
+          },
+          landlord: {
+            include: {
+              user: { select: { id: true, email: true } },
+            },
           },
         },
-        landlord: {
-          include: {
-            user: { select: { id: true, email: true } },
-          },
-        },
-      },
-    });
+      }),
+      this.prisma.unit.count({ where: { propertyId } }),
+    ]);
+
+    return { units, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async updateUnitName(propertyId: string, unitId: string, userId: string, userRole: Role, name: string) {

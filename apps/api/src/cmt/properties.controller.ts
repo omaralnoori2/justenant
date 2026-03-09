@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -54,10 +54,19 @@ export class PropertiesController {
     return this.propertiesService.generateUnitsForProperty(propertyId, user.id, config, user.role as Role);
   }
 
-  // Get all units in a property
+  // Get units in a property (paginated)
   @Get(':id/units')
-  async getUnits(@CurrentUser() user: User, @Param('id') propertyId: string) {
-    return this.propertiesService.getUnits(propertyId, user.id, user.role as Role);
+  async getUnits(
+    @CurrentUser() user: User,
+    @Param('id') propertyId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.propertiesService.getUnits(
+      propertyId, user.id, user.role as Role,
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 50,
+    );
   }
 
   // Update unit name

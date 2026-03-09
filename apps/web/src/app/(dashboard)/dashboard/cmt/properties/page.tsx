@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
 import { getRole } from '@/lib/auth';
 import type { Role } from '@/types';
@@ -17,6 +17,10 @@ interface Unit {
   tenant?: { id: string; firstName: string; lastName: string; user: { email: string } };
   landlordId?: string;
   landlord?: { id: string; firstName: string; lastName: string; user: { email: string } };
+  propertyId: string;
+}
+
+interface UnitWithProperty extends Unit {
   property: { id: string; name: string; landlord?: { id: string; firstName: string; lastName: string; user: { email: string } } };
 }
 
@@ -25,7 +29,7 @@ interface Property {
   name: string;
   address: string;
   type: string;
-  units: Unit[];
+  _count: { units: number };
   landlord?: { id: string; firstName: string; lastName: string; user: { email: string } };
 }
 
@@ -46,13 +50,15 @@ interface LandlordOption {
 export default function CMTPropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState({
     name: '', address: '',
     cmtEmail: '', cmtPassword: '', cmtBusinessName: '', cmtBusinessAddress: '', cmtContactPhone: '', cmtLicenseNumber: '',
   });
   const [submitting, setSubmitting] = useState(false);
-  const [allUnits, setAllUnits] = useState<Unit[]>([]);
+  const [allUnits, setAllUnits] = useState<UnitWithProperty[]>([]);
+  const [totalUnits, setTotalUnits] = useState(0);
   const [addUnitsMode, setAddUnitsMode] = useState<'none' | 'choose' | 'single' | 'bulk'>('none');
   const [bulkStep, setBulkStep] = useState<'type' | 'config' | 'confirm'>('type');
   const [bulkType, setBulkType] = useState<'tower' | 'villa'>('tower');
@@ -65,7 +71,7 @@ export default function CMTPropertiesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(30);
   const [showTenantModal, setShowTenantModal] = useState(false);
-  const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
+  const [selectedUnit, setSelectedUnit] = useState<UnitWithProperty | null>(null);
   const [availableTenants, setAvailableTenants] = useState<TenantOption[]>([]);
   const [assigningTenant, setAssigningTenant] = useState(false);
   const [showLandlordModal, setShowLandlordModal] = useState(false);
@@ -74,6 +80,7 @@ export default function CMTPropertiesPage() {
   const [sortColumn, setSortColumn] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [userRole, setUserRole] = useState<Role | null>(null);
+  const [loadingUnits, setLoadingUnits] = useState(false);
 
   useEffect(() => {
     setUserRole(getRole());
@@ -91,29 +98,107 @@ export default function CMTPropertiesPage() {
 
   const fetchProperties = async () => {
     try {
+      setFetchError(null);
       const res = await api.get('/cmt/properties');
-      console.log('Fetched properties response:', res.data);
-
       setProperties(res.data);
-      const units = res.data.flatMap((prop: Property) =>
-        prop.units.map((unit: Unit) => {
-          console.log(`Unit ${unit.name} landlord data:`, unit.landlord);
-          return {
-            ...unit,
-            property: { id: prop.id, name: prop.name, landlord: prop.landlord }
-          };
-        })
-      );
-      console.log('Processed units with landlord data:', units);
-      setAllUnits(units);
-    } catch (err) {
+      // Auto-select first property and fetch its units
+      if (res.data.length > 0) {
+        const firstProp = res.data[0];
+        if (!selectedProperty) {
+          setSelectedProperty(firstProp.id);
+        }
+        await fetchUnitsForProperties(res.data);
+      }
+    } catch (err: any) {
       console.error('Failed to fetch properties', err);
+      setFetchError(err.response?.data?.message || err.message || 'Failed to load properties');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenTenantModal = async (unit: Unit) => {
+  const fetchUnitsForProperties = async (props: Property[]) => {
+    setLoadingUnits(true);
+    try {
+      // Fetch first page of units for each property
+      const results = await Promise.all(
+        props.map(async (prop) => {
+          try {
+            const res = await api.get(`/cmt/properties/${prop.id}/units?page=${currentPage}&limit=${rowsPerPage}`);
+            return { prop, data: res.data };
+          } catch {
+            return { prop, data: { units: [], total: 0 } };
+          }
+        })
+      );
+
+      const units: UnitWithProperty[] = [];
+      let total = 0;
+      results.forEach(({ prop, data }) => {
+        total += data.total;
+        data.units.forEach((unit: Unit) => {
+          units.push({
+            ...unit,
+            property: { id: prop.id, name: prop.name, landlord: prop.landlord },
+          });
+        });
+      });
+
+      setAllUnits(units);
+      setTotalUnits(total);
+    } catch (err) {
+      console.error('Failed to fetch units', err);
+    } finally {
+      setLoadingUnits(false);
+    }
+  };
+
+  // Refetch units when page or rows per page changes
+  const fetchCurrentUnits = useCallback(async () => {
+    if (properties.length === 0) return;
+    setLoadingUnits(true);
+    try {
+      // For simplicity, fetch from selected property or all
+      const props = properties;
+      const results = await Promise.all(
+        props.map(async (prop) => {
+          try {
+            const res = await api.get(`/cmt/properties/${prop.id}/units?page=${currentPage}&limit=${rowsPerPage}`);
+            return { prop, data: res.data };
+          } catch {
+            return { prop, data: { units: [], total: 0 } };
+          }
+        })
+      );
+
+      const units: UnitWithProperty[] = [];
+      let total = 0;
+      results.forEach(({ prop, data }) => {
+        total += data.total;
+        data.units.forEach((unit: Unit) => {
+          units.push({
+            ...unit,
+            property: { id: prop.id, name: prop.name, landlord: prop.landlord },
+          });
+        });
+      });
+
+      setAllUnits(units);
+      setTotalUnits(total);
+    } catch (err) {
+      console.error('Failed to fetch units', err);
+    } finally {
+      setLoadingUnits(false);
+    }
+  }, [properties, currentPage, rowsPerPage]);
+
+  useEffect(() => {
+    if (properties.length > 0) {
+      fetchCurrentUnits();
+    }
+  }, [currentPage, rowsPerPage]);
+
+  const handleOpenTenantModal = async (unit: UnitWithProperty) => {
     try {
       const res = await api.get('/cmt/tenants');
       setAvailableTenants(res.data || []);
@@ -133,7 +218,7 @@ export default function CMTPropertiesPage() {
       await api.post(url, { tenantId });
       setShowTenantModal(false);
       setSelectedUnit(null);
-      await fetchProperties();
+      await fetchCurrentUnits();
     } catch (err: any) {
       console.error('Failed to assign tenant:', err);
       alert(`Failed to assign tenant: ${err.response?.data?.message || err.message}`);
@@ -150,7 +235,7 @@ export default function CMTPropertiesPage() {
       await api.post(removeUrl);
       setShowTenantModal(false);
       setSelectedUnit(null);
-      await fetchProperties();
+      await fetchCurrentUnits();
     } catch (err) {
       console.error('Failed to remove tenant', err);
       alert('Failed to remove tenant');
@@ -159,51 +244,35 @@ export default function CMTPropertiesPage() {
     }
   };
 
-  const handleOpenLandlordModal = async (unit: Unit) => {
+  const handleOpenLandlordModal = async (unit: UnitWithProperty) => {
     try {
-      console.log('Opening landlord modal for unit:', unit.id, unit.name);
       const res = await api.get('/cmt/landlords');
-      console.log('Fetched landlords response:', res.data);
-
       if (!res.data) {
-        console.warn('API returned null/undefined data');
         setAvailableLandlords([]);
       } else if (Array.isArray(res.data)) {
         setAvailableLandlords(res.data);
       } else {
-        console.warn('Unexpected response format:', res.data);
         setAvailableLandlords([]);
       }
-
       setSelectedUnit(unit);
       setShowLandlordModal(true);
-      console.log('Landlord modal opened successfully');
     } catch (err: any) {
-      console.error('Failed to fetch landlords - Full error:', err);
-      console.error('Error response:', err.response?.data);
-      console.error('Error status:', err.response?.status);
+      console.error('Failed to fetch landlords:', err);
       alert(`Failed to fetch available landlords: ${err.response?.data?.message || err.message}`);
     }
   };
 
   const handleAssignLandlord = async (landlordId: string) => {
-    if (!selectedUnit) {
-      console.warn('No unit selected for landlord assignment');
-      return;
-    }
+    if (!selectedUnit) return;
     setAssigningLandlord(true);
     try {
       const url = `/cmt/properties/${selectedUnit.property.id}/units/${selectedUnit.id}/assign-landlord`;
-      console.log('Assigning landlord:', { url, landlordId });
-      const res = await api.post(url, { landlordId });
-      console.log('Landlord assignment response:', res.data);
+      await api.post(url, { landlordId });
       setShowLandlordModal(false);
       setSelectedUnit(null);
-      await fetchProperties();
+      await fetchCurrentUnits();
     } catch (err: any) {
-      console.error('Failed to assign landlord - Full error:', err);
-      console.error('Error response data:', err.response?.data);
-      console.error('Error status:', err.response?.status);
+      console.error('Failed to assign landlord:', err);
       alert(`Failed to assign landlord: ${err.response?.data?.message || err.message}`);
     } finally {
       setAssigningLandlord(false);
@@ -211,23 +280,16 @@ export default function CMTPropertiesPage() {
   };
 
   const handleRemoveLandlord = async () => {
-    if (!selectedUnit) {
-      console.warn('No unit selected for landlord removal');
-      return;
-    }
+    if (!selectedUnit) return;
     setAssigningLandlord(true);
     try {
       const removeUrl = `/cmt/properties/${selectedUnit.property.id}/units/${selectedUnit.id}/remove-landlord`;
-      console.log('Removing landlord from unit:', removeUrl);
-      const res = await api.post(removeUrl);
-      console.log('Landlord removal response:', res.data);
+      await api.post(removeUrl);
       setShowLandlordModal(false);
       setSelectedUnit(null);
-      await fetchProperties();
+      await fetchCurrentUnits();
     } catch (err: any) {
-      console.error('Failed to remove landlord - Full error:', err);
-      console.error('Error response data:', err.response?.data);
-      console.error('Error status:', err.response?.status);
+      console.error('Failed to remove landlord:', err);
       alert(`Failed to remove landlord: ${err.response?.data?.message || err.message}`);
     } finally {
       setAssigningLandlord(false);
@@ -253,7 +315,7 @@ export default function CMTPropertiesPage() {
   const handleGenerateUnits = async () => {
     const wp = getWorkingProperty();
     if (!wp) {
-      alert('No property found');
+      alert('No property selected. Please ensure you have a property before generating units.');
       return;
     }
     setGenerating(true);
@@ -270,9 +332,9 @@ export default function CMTPropertiesPage() {
       setSelectedProperty('');
       setGeneratorValues({ towers: 1, floors: 1, unitsPerFloor: 1 });
       await fetchProperties();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to generate units', err);
-      alert('Failed to generate units');
+      alert(`Failed to generate units: ${err.response?.data?.message || err.message}`);
     } finally {
       setGenerating(false);
     }
@@ -292,11 +354,8 @@ export default function CMTPropertiesPage() {
         unitsPerFloor: 1,
         towerNames: [singleUnitName.trim()],
       });
-      // The API will create "Flat 101 Tower <name>", so let's use a direct unit creation approach
-      // Actually, let's just use the updateUnitName after creation or create a simpler approach
-      // For now, we use the bulk generator with 1 unit and then rename it
-      const unitsRes = await api.get(`/cmt/properties/${propertyId}/units`);
-      const allPropertyUnits = unitsRes.data;
+      const unitsRes = await api.get(`/cmt/properties/${propertyId}/units?page=1&limit=1000`);
+      const allPropertyUnits = unitsRes.data.units;
       const lastUnit = allPropertyUnits[allPropertyUnits.length - 1];
       if (lastUnit) {
         await api.patch(`/cmt/properties/${propertyId}/units/${lastUnit.id}`, {
@@ -316,17 +375,17 @@ export default function CMTPropertiesPage() {
     }
   };
 
-  const getTenantDisplay = (unit: Unit) => {
+  const getTenantDisplay = (unit: UnitWithProperty) => {
     if (!unit.tenant) return '-';
     return `${unit.tenant.firstName} ${unit.tenant.lastName}`;
   };
 
-  const getLandlordDisplay = (unit: Unit) => {
+  const getLandlordDisplay = (unit: UnitWithProperty) => {
     if (!unit.landlord) return '-';
     return `${unit.landlord.firstName} ${unit.landlord.lastName}`;
   };
 
-  const getTowerName = (unit: Unit) => {
+  const getTowerName = (unit: UnitWithProperty) => {
     const towerMatch = unit.name.match(/Tower\s([A-Z]+)$/);
     return towerMatch ? towerMatch[1] : '-';
   };
@@ -388,11 +447,20 @@ export default function CMTPropertiesPage() {
     return <div className="text-gray-500">Loading properties...</div>;
   }
 
+  if (fetchError) {
+    return (
+      <div className="card border-l-4 border-l-red-500">
+        <h2 className="text-lg font-bold text-red-700 mb-2">Failed to load properties</h2>
+        <p className="text-gray-600 mb-4">{fetchError}</p>
+        <button onClick={() => { setLoading(true); fetchProperties(); }} className="btn-primary">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   const sortedUnits = getSortedUnits();
-  const startIndex = (currentPage - 1) * rowsPerPage;
-  const endIndex = startIndex + rowsPerPage;
-  const paginatedUnits = sortedUnits.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(sortedUnits.length / rowsPerPage);
+  const totalPages = Math.ceil(totalUnits / rowsPerPage);
 
   return (
     <div className="space-y-6">
@@ -402,7 +470,8 @@ export default function CMTPropertiesPage() {
           <div className="relative">
             <button
               onClick={() => setAddUnitsMode(addUnitsMode === 'none' ? 'choose' : 'none')}
-              className="btn-primary"
+              disabled={properties.length === 0}
+              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {addUnitsMode !== 'none' ? 'Cancel' : '+ Add Units'}
             </button>
@@ -434,6 +503,12 @@ export default function CMTPropertiesPage() {
         </div>
       </div>
 
+      {properties.length === 0 && (
+        <div className="card border-l-4 border-l-yellow-400">
+          <p className="text-gray-600">No properties found. {userRole === 'SUPER_ADMIN' ? 'Create a property to get started.' : 'Please contact your administrator to assign a property to your account.'}</p>
+        </div>
+      )}
+
       {addUnitsMode === 'single' && (
         <div className="card border-l-4 border-l-brand-blue">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Add One Unit</h2>
@@ -449,7 +524,7 @@ export default function CMTPropertiesPage() {
               >
                 {properties.map((prop) => (
                   <option key={prop.id} value={prop.id}>
-                    {prop.name} ({prop.units.length} units)
+                    {prop.name} ({prop._count.units} units)
                   </option>
                 ))}
               </select>
@@ -513,7 +588,7 @@ export default function CMTPropertiesPage() {
                   ['type', 'config', 'confirm'].indexOf(bulkStep) > i ? 'bg-green-500 text-white' :
                   'bg-gray-200 text-gray-500'
                 }`}>
-                  {['type', 'config', 'confirm'].indexOf(bulkStep) > i ? '✓' : i + 1}
+                  {['type', 'config', 'confirm'].indexOf(bulkStep) > i ? '\u2713' : i + 1}
                 </div>
                 <span className={`text-sm font-medium ${bulkStep === step ? 'text-gray-900' : 'text-gray-400'}`}>
                   {step === 'type' ? 'Type' : step === 'config' ? 'Configuration' : 'Confirm'}
@@ -536,7 +611,7 @@ export default function CMTPropertiesPage() {
                 >
                   {properties.map((prop) => (
                     <option key={prop.id} value={prop.id}>
-                      {prop.name} ({prop.units.length} units)
+                      {prop.name} ({prop._count.units} units)
                     </option>
                   ))}
                 </select>
@@ -559,7 +634,7 @@ export default function CMTPropertiesPage() {
                         : 'border-gray-200 text-gray-600 hover:border-gray-300'
                     }`}
                   >
-                    <div className="text-2xl mb-2">🏢</div>
+                    <div className="text-2xl mb-2">&#127970;</div>
                     <div className="font-semibold">Towers</div>
                     <div className="text-xs mt-1">Towers &gt; Floors &gt; Flats</div>
                   </button>
@@ -572,7 +647,7 @@ export default function CMTPropertiesPage() {
                         : 'border-gray-200 text-gray-600 hover:border-gray-300'
                     }`}
                   >
-                    <div className="text-2xl mb-2">🏡</div>
+                    <div className="text-2xl mb-2">&#127969;</div>
                     <div className="font-semibold">Villas</div>
                     <div className="text-xs mt-1">Areas &gt; Blocks &gt; Villas</div>
                   </button>
@@ -608,6 +683,7 @@ export default function CMTPropertiesPage() {
                   <input
                     type="number"
                     min="1"
+                    max="26"
                     value={generatorValues.towers}
                     onChange={(e) =>
                       setGeneratorValues({ ...generatorValues, towers: parseInt(e.target.value) || 1 })
@@ -705,8 +781,8 @@ export default function CMTPropertiesPage() {
                 <button
                   type="button"
                   onClick={handleGenerateUnits}
-                  disabled={generating}
-                  className="btn-primary"
+                  disabled={generating || !getWorkingProperty()}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {generating ? 'Generating...' : 'Confirm & Generate'}
                 </button>
@@ -801,18 +877,18 @@ export default function CMTPropertiesPage() {
                     value={formData.cmtContactPhone}
                     onChange={(e) => setFormData({ ...formData, cmtContactPhone: e.target.value })}
                     className="input-field"
-                    placeholder="e.g., +971 50 123 4567"
+                    placeholder="e.g., +971501234567"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">License Number (Optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">License Number (optional)</label>
                   <input
                     type="text"
                     value={formData.cmtLicenseNumber}
                     onChange={(e) => setFormData({ ...formData, cmtLicenseNumber: e.target.value })}
                     className="input-field"
-                    placeholder="e.g., BRN-12345"
+                    placeholder="e.g., RE-2024-001"
                   />
                 </div>
               </div>
@@ -834,13 +910,16 @@ export default function CMTPropertiesPage() {
         </div>
       )}
 
-      {allUnits.length === 0 ? (
+      {allUnits.length === 0 && !loadingUnits ? (
         <div className="card">
-          <p className="text-gray-500">No units yet. Create a property and generate units to get started.</p>
+          <p className="text-gray-500">No units yet. {properties.length > 0 ? 'Use "+ Add Units" to generate units for your property.' : 'Create a property and generate units to get started.'}</p>
         </div>
       ) : (
         <>
           <div className="card overflow-x-auto">
+            {loadingUnits && (
+              <div className="text-center py-2 text-sm text-gray-500">Loading units...</div>
+            )}
             <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
               <colgroup>
                 <col style={{ width: '60px' }} />
@@ -858,45 +937,45 @@ export default function CMTPropertiesPage() {
                     onClick={() => handleSort('property')}
                     className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors truncate"
                   >
-                    Property {sortColumn === 'property' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    Property {sortColumn === 'property' && (sortDirection === 'asc' ? '\u2191' : '\u2193')}
                   </th>
                   <th
                     onClick={() => handleSort('name')}
                     className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors truncate"
                   >
-                    Unit Name {sortColumn === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    Unit Name {sortColumn === 'name' && (sortDirection === 'asc' ? '\u2191' : '\u2193')}
                   </th>
                   <th
                     onClick={() => handleSort('tower')}
                     className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors truncate"
                   >
-                    Tower {sortColumn === 'tower' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    Tower {sortColumn === 'tower' && (sortDirection === 'asc' ? '\u2191' : '\u2193')}
                   </th>
                   <th
                     onClick={() => handleSort('status')}
                     className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors truncate"
                   >
-                    Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    Status {sortColumn === 'status' && (sortDirection === 'asc' ? '\u2191' : '\u2193')}
                   </th>
                   <th
                     onClick={() => handleSort('tenant')}
                     className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors truncate"
                   >
-                    Tenant {sortColumn === 'tenant' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    Tenant {sortColumn === 'tenant' && (sortDirection === 'asc' ? '\u2191' : '\u2193')}
                   </th>
                   <th
                     onClick={() => handleSort('landlord')}
                     className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors truncate"
                   >
-                    Landlord {sortColumn === 'landlord' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    Landlord {sortColumn === 'landlord' && (sortDirection === 'asc' ? '\u2191' : '\u2193')}
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedUnits.map((unit, index) => (
+                {sortedUnits.map((unit, index) => (
                   <tr key={unit.id} className="border-b border-gray-200 hover:bg-gray-50">
                     <td className="px-4 py-3 text-gray-600 font-medium">
-                      {startIndex + index + 1}
+                      {(currentPage - 1) * rowsPerPage + index + 1}
                     </td>
                     <td className="px-4 py-3 text-gray-900 truncate" title={unit.property.name}>{unit.property.name}</td>
                     <td className="px-4 py-3 text-gray-900 truncate" title={unit.name}>{unit.name}</td>
@@ -955,7 +1034,7 @@ export default function CMTPropertiesPage() {
                 </select>
               </div>
               <div className="text-sm text-gray-600">
-                Showing {startIndex + 1} to {Math.min(endIndex, sortedUnits.length)} of {sortedUnits.length} units
+                Showing page {currentPage} of {totalPages || 1} ({totalUnits.toLocaleString()} total units)
               </div>
             </div>
 
@@ -991,7 +1070,7 @@ export default function CMTPropertiesPage() {
 
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
+                disabled={currentPage === totalPages || totalPages === 0}
                 className="px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
               >
                 Next
@@ -1015,7 +1094,7 @@ export default function CMTPropertiesPage() {
                   disabled={assigningTenant}
                   className="w-full text-left px-4 py-3 rounded border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium mb-2"
                 >
-                  {assigningTenant ? 'Removing...' : '✕ Remove Current Tenant'}
+                  {assigningTenant ? 'Removing...' : '\u2715 Remove Current Tenant'}
                 </button>
               )}
 
@@ -1070,7 +1149,7 @@ export default function CMTPropertiesPage() {
                   disabled={assigningLandlord}
                   className="w-full text-left px-4 py-3 rounded border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium mb-2"
                 >
-                  {assigningLandlord ? 'Removing...' : '✕ Remove Current Landlord'}
+                  {assigningLandlord ? 'Removing...' : '\u2715 Remove Current Landlord'}
                 </button>
               )}
 

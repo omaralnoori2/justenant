@@ -1,132 +1,70 @@
 import { PrismaClient, Role, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient({
-  log: [
-    { emit: 'stdout', level: 'query' },
-    { emit: 'stdout', level: 'error' },
-    { emit: 'stdout', level: 'warn' },
-  ],
-});
+const prisma = new PrismaClient();
 
 async function main() {
-  try {
-    console.log('🌱 Starting database seed...');
-    console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✓ Set' : '✗ Not set');
-  } catch (e) {
-    console.error('Error checking env:', e);
-  }
+  console.log('Resetting database...');
 
-  try {
-    console.log('🔗 Connecting to database...');
-    await prisma.$queryRaw`SELECT 1`;
-    console.log('✓ Database connection successful');
-  } catch (e) {
-    console.error('✗ Database connection failed:', e);
-    throw e;
-  }
-
-  console.log('Seeding database...');
+  // Delete all data in correct order (respecting foreign keys)
+  await prisma.maintenanceRequest.deleteMany();
+  await prisma.unit.deleteMany();
+  await prisma.property.deleteMany();
+  await prisma.cmtSubscription.deleteMany();
+  await prisma.serviceProviderProfile.deleteMany();
+  await prisma.tenantProfile.deleteMany();
+  await prisma.landlordProfile.deleteMany();
+  await prisma.cmtProfile.deleteMany();
+  await prisma.refreshToken.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.subscriptionTier.deleteMany();
+  console.log('All data cleared.');
 
   // Subscription tiers
-  try {
-    console.log('📦 Creating subscription tiers...');
-  } catch (e) {
-    console.error('Error:', e);
-  }
   const tiers = await Promise.all([
-    prisma.subscriptionTier.upsert({
-      where: { name: 'Starter' },
-      update: {},
-      create: { name: 'Starter', maxTenants: 50, maxProperties: 5, pricePerMonth: 99 },
+    prisma.subscriptionTier.create({
+      data: { name: 'Starter', maxTenants: 50, maxProperties: 5, pricePerMonth: 99 },
     }),
-    prisma.subscriptionTier.upsert({
-      where: { name: 'Growth' },
-      update: {},
-      create: { name: 'Growth', maxTenants: 200, maxProperties: 20, pricePerMonth: 299 },
+    prisma.subscriptionTier.create({
+      data: { name: 'Growth', maxTenants: 200, maxProperties: 20, pricePerMonth: 299 },
     }),
-    prisma.subscriptionTier.upsert({
-      where: { name: 'Enterprise' },
-      update: {},
-      create: { name: 'Enterprise', maxTenants: 9999, maxProperties: 999, pricePerMonth: 999 },
+    prisma.subscriptionTier.create({
+      data: { name: 'Enterprise', maxTenants: 9999, maxProperties: 999, pricePerMonth: 999 },
     }),
   ]);
-  console.log(`✓ ${tiers.length} subscription tiers created`);
+  console.log(`${tiers.length} subscription tiers created.`);
 
   // Super Admin
-  const superAdminEmail = 'superadmin@justanent.com';
-  const existing = await prisma.user.findUnique({ where: { email: superAdminEmail } });
-  if (!existing) {
-    await prisma.user.create({
-      data: {
-        email: superAdminEmail,
-        passwordHash: await bcrypt.hash('SuperAdmin@123', 10),
-        role: Role.SUPER_ADMIN,
-        status: UserStatus.ACTIVE,
-      },
-    });
-    console.log('✓ Super Admin created: superadmin@justanent.com / SuperAdmin@123');
-  } else {
-    console.log('✓ Super Admin already exists');
-  }
+  await prisma.user.create({
+    data: {
+      email: 'superadmin@justanent.com',
+      passwordHash: await bcrypt.hash('SuperAdmin@123', 10),
+      role: Role.SUPER_ADMIN,
+      status: UserStatus.ACTIVE,
+    },
+  });
+  console.log('Super Admin created: superadmin@justanent.com / SuperAdmin@123');
 
-  // Portal Team member
-  const portalEmail = 'portal@justanent.com';
-  const existingPortal = await prisma.user.findUnique({ where: { email: portalEmail } });
-  if (!existingPortal) {
-    await prisma.user.create({
-      data: {
-        email: portalEmail,
-        passwordHash: await bcrypt.hash('Portal@123', 10),
-        role: Role.PORTAL_TEAM,
-        status: UserStatus.ACTIVE,
-      },
-    });
-    console.log('✓ Portal Team created: portal@justanent.com / Portal@123');
-  }
+  // Portal Team
+  await prisma.user.create({
+    data: {
+      email: 'portal@justanent.com',
+      passwordHash: await bcrypt.hash('Portal@123', 10),
+      role: Role.PORTAL_TEAM,
+      status: UserStatus.ACTIVE,
+    },
+  });
+  console.log('Portal Team created: portal@justanent.com / Portal@123');
 
-  // Test CMT
-  const cmtEmail = 'testcmt@example.com';
-  const existingCmt = await prisma.user.findUnique({ where: { email: cmtEmail } });
-  if (!existingCmt) {
-    const cmtUser = await prisma.user.create({
-      data: {
-        email: cmtEmail,
-        passwordHash: await bcrypt.hash('TestCMT@12', 10),
-        role: Role.CMT,
-        status: UserStatus.ACTIVE,
-      },
-    });
-    await prisma.cmtProfile.create({
-      data: {
-        userId: cmtUser.id,
-        businessName: 'Test CMT Company',
-        businessAddress: '123 Test Street',
-        contactPhone: '555-0123',
-        status: 'APPROVED',
-        subscriptionTierId: tiers.find(t => t.name === 'Growth')?.id,
-      },
-    });
-    console.log('✓ Test CMT created: testcmt@example.com / TestCMT@12');
-  }
-
-  console.log('Seeding complete.');
+  console.log('Seed complete.');
 }
 
 main()
-  .then(() => {
-    console.log('✓ Seeding completed successfully');
-    process.exit(0);
-  })
+  .then(() => process.exit(0))
   .catch((error) => {
-    console.error('✗ Seeding failed:', error);
+    console.error('Seed failed:', error);
     process.exit(1);
   })
   .finally(async () => {
-    try {
-      await prisma.$disconnect();
-      console.log('✓ Disconnected from database');
-    } catch (e) {
-      console.error('✗ Error disconnecting:', e);
-    }
+    await prisma.$disconnect();
   });
