@@ -47,7 +47,10 @@ export default function CMTPropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [formData, setFormData] = useState({ name: '', address: '' });
+  const [formData, setFormData] = useState({
+    name: '', address: '',
+    cmtEmail: '', cmtPassword: '', cmtBusinessName: '', cmtBusinessAddress: '', cmtContactPhone: '', cmtLicenseNumber: '',
+  });
   const [submitting, setSubmitting] = useState(false);
   const [allUnits, setAllUnits] = useState<Unit[]>([]);
   const [showBulkGenerate, setShowBulkGenerate] = useState(false);
@@ -222,7 +225,7 @@ export default function CMTPropertiesPage() {
     setSubmitting(true);
     try {
       await api.post('/cmt/properties', formData);
-      setFormData({ name: '', address: '' });
+      setFormData({ name: '', address: '', cmtEmail: '', cmtPassword: '', cmtBusinessName: '', cmtBusinessAddress: '', cmtContactPhone: '', cmtLicenseNumber: '' });
       setShowCreateForm(false);
       await fetchProperties();
     } catch (err) {
@@ -446,31 +449,107 @@ export default function CMTPropertiesPage() {
         <div className="card border-l-4 border-l-brand-blue">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Create New Property</h2>
           <form onSubmit={handleCreateProperty} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Property Name</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="input-field"
-                placeholder="e.g., Riverside Towers"
-                required
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="input-field"
+                  placeholder="e.g., Riverside Towers"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property Address</label>
+                <input
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="input-field"
+                  placeholder="e.g., 123 Main St, Downtown"
+                  required
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-              <input
-                type="text"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="input-field"
-                placeholder="e.g., 123 Main St, Downtown"
-                required
-              />
+
+            <div className="border-t pt-4 mt-4">
+              <h3 className="text-md font-semibold text-gray-800 mb-3">CMT Admin Account</h3>
+              <p className="text-sm text-gray-500 mb-3">A dedicated CMT admin will be created and linked to this property.</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CMT Email</label>
+                  <input
+                    type="email"
+                    value={formData.cmtEmail}
+                    onChange={(e) => setFormData({ ...formData, cmtEmail: e.target.value })}
+                    className="input-field"
+                    placeholder="e.g., cmt@riverside.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CMT Password</label>
+                  <input
+                    type="password"
+                    value={formData.cmtPassword}
+                    onChange={(e) => setFormData({ ...formData, cmtPassword: e.target.value })}
+                    className="input-field"
+                    placeholder="Min 8 characters"
+                    minLength={8}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
+                  <input
+                    type="text"
+                    value={formData.cmtBusinessName}
+                    onChange={(e) => setFormData({ ...formData, cmtBusinessName: e.target.value })}
+                    className="input-field"
+                    placeholder="e.g., Riverside Management Co."
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Address</label>
+                  <input
+                    type="text"
+                    value={formData.cmtBusinessAddress}
+                    onChange={(e) => setFormData({ ...formData, cmtBusinessAddress: e.target.value })}
+                    className="input-field"
+                    placeholder="e.g., Office 5, Business Bay"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone</label>
+                  <input
+                    type="tel"
+                    value={formData.cmtContactPhone}
+                    onChange={(e) => setFormData({ ...formData, cmtContactPhone: e.target.value })}
+                    className="input-field"
+                    placeholder="e.g., +971 50 123 4567"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">License Number (Optional)</label>
+                  <input
+                    type="text"
+                    value={formData.cmtLicenseNumber}
+                    onChange={(e) => setFormData({ ...formData, cmtLicenseNumber: e.target.value })}
+                    className="input-field"
+                    placeholder="e.g., BRN-12345"
+                  />
+                </div>
+              </div>
             </div>
+
             <div className="flex gap-2">
               <button type="submit" disabled={submitting} className="btn-primary">
-                {submitting ? 'Creating...' : 'Create'}
+                {submitting ? 'Creating...' : 'Create Property & CMT Account'}
               </button>
               <button
                 type="button"

@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from '../common/enums/role.enum';
+import * as bcrypt from 'bcryptjs';
 
 import { User } from '@prisma/client';
 
@@ -9,6 +10,13 @@ export interface CreatePropertyDto {
   address: string;
   landlordId?: string;
   cmtId?: string; // For Super Admin to assign CMT to property
+  // CMT admin account fields (required when Super Admin creates property)
+  cmtEmail?: string;
+  cmtPassword?: string;
+  cmtBusinessName?: string;
+  cmtBusinessAddress?: string;
+  cmtContactPhone?: string;
+  cmtLicenseNumber?: string;
 }
 
 export interface BulkGenerateUnitsDto {
@@ -36,15 +44,45 @@ export class PropertiesService {
   async createProperty(userId: string, data: CreatePropertyDto, userRole: Role) {
     let cmtId: string | undefined;
 
-    // Super Admin can create properties with or without a CMT assignment
     if (userRole === Role.SUPER_ADMIN) {
-      cmtId = data.cmtId; // Can be undefined if not assigned yet
+      // Super Admin must create a dedicated CMT admin account for each property
+      if (data.cmtEmail && data.cmtPassword && data.cmtBusinessName && data.cmtBusinessAddress && data.cmtContactPhone) {
+        // Check if email already exists
+        const existing = await this.prisma.user.findUnique({ where: { email: data.cmtEmail } });
+        if (existing) throw new ConflictException('CMT email already registered');
+
+        const passwordHash = await bcrypt.hash(data.cmtPassword, 10);
+
+        // Create CMT user + profile in a transaction
+        const cmtUser = await this.prisma.user.create({
+          data: {
+            email: data.cmtEmail,
+            passwordHash,
+            role: 'CMT',
+            status: 'ACTIVE',
+            cmtProfile: {
+              create: {
+                businessName: data.cmtBusinessName,
+                businessAddress: data.cmtBusinessAddress,
+                contactPhone: data.cmtContactPhone,
+                licenseNumber: data.cmtLicenseNumber,
+                status: 'APPROVED',
+              },
+            },
+          },
+          include: { cmtProfile: true },
+        });
+
+        cmtId = cmtUser.cmtProfile!.id;
+      } else {
+        cmtId = data.cmtId; // Fallback to existing CMT if provided
+      }
     } else {
       // CMT users must have their own CMT ID
       cmtId = await this.getCmtIdByUserId(userId);
     }
 
-    return this.prisma.property.create({
+    const property = await this.prisma.property.create({
       data: {
         name: data.name,
         address: data.address,
@@ -52,7 +90,16 @@ export class PropertiesService {
         cmtId,
         landlordId: data.landlordId,
       },
+      include: {
+        cmt: {
+          include: {
+            user: { select: { id: true, email: true } },
+          },
+        },
+      },
     });
+
+    return property;
   }
 
   async getProperties(userId: string, userRole: Role) {
