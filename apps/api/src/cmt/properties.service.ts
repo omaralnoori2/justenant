@@ -262,6 +262,28 @@ export class PropertiesService {
           }
         }
       }
+    } else if (config.mode === 'villa') {
+      const areas = config.towers || 1; // reuse towers field as number of areas
+      const blocks = config.floors || 1; // reuse floors field as number of blocks
+      const villasPerBlock = config.unitsPerFloor || 1; // reuse unitsPerFloor as villas per block
+      const areaNames = config.towerNames || Array.from({ length: areas }, (_, i) =>
+        String.fromCharCode(65 + i),
+      );
+
+      // Generate villas: Villa [block][unit] Area [Letter]
+      for (let a = 0; a < areas; a++) {
+        for (let b = 1; b <= blocks; b++) {
+          for (let v = 1; v <= villasPerBlock; v++) {
+            const villaName = `Villa ${b}${v.toString().padStart(2, '0')} Area ${areaNames[a]}`;
+            units.push({
+              propertyId,
+              name: villaName,
+              floor: b,
+              unitNumber: v,
+            });
+          }
+        }
+      }
     }
 
     // Bulk create units (append to existing)

@@ -53,10 +53,15 @@ export default function CMTPropertiesPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [allUnits, setAllUnits] = useState<Unit[]>([]);
-  const [showBulkGenerate, setShowBulkGenerate] = useState(false);
+  const [addUnitsMode, setAddUnitsMode] = useState<'none' | 'choose' | 'single' | 'bulk'>('none');
+  const [bulkStep, setBulkStep] = useState<'type' | 'config' | 'confirm'>('type');
+  const [bulkType, setBulkType] = useState<'tower' | 'villa'>('tower');
   const [selectedProperty, setSelectedProperty] = useState<string>('');
-  const [generatorValues, setGeneratorValues] = useState({ towers: 10, floors: 30, unitsPerFloor: 9 });
+  const [generatorValues, setGeneratorValues] = useState({ towers: 1, floors: 1, unitsPerFloor: 1 });
   const [generating, setGenerating] = useState(false);
+  const [singleUnitName, setSingleUnitName] = useState('');
+  const [singleUnitFloor, setSingleUnitFloor] = useState('');
+  const [addingSingleUnit, setAddingSingleUnit] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(30);
   const [showTenantModal, setShowTenantModal] = useState(false);
@@ -236,8 +241,7 @@ export default function CMTPropertiesPage() {
     }
   };
 
-  const handleGenerateUnits = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleGenerateUnits = async () => {
     if (!selectedProperty) {
       alert('Please select a property');
       return;
@@ -245,20 +249,59 @@ export default function CMTPropertiesPage() {
     setGenerating(true);
     try {
       const res = await api.post(`/cmt/properties/${selectedProperty}/generate-units`, {
-        mode: 'tower',
+        mode: bulkType,
         towers: generatorValues.towers,
         floors: generatorValues.floors,
         unitsPerFloor: generatorValues.unitsPerFloor,
       });
       alert(`Generated ${res.data.generated} units!`);
-      setShowBulkGenerate(false);
+      setAddUnitsMode('none');
+      setBulkStep('type');
       setSelectedProperty('');
+      setGeneratorValues({ towers: 1, floors: 1, unitsPerFloor: 1 });
       await fetchProperties();
     } catch (err) {
       console.error('Failed to generate units', err);
       alert('Failed to generate units');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleAddSingleUnit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedProperty || !singleUnitName.trim()) return;
+    setAddingSingleUnit(true);
+    try {
+      const propertyId = selectedProperty;
+      await api.post(`/cmt/properties/${propertyId}/generate-units`, {
+        mode: 'tower',
+        towers: 1,
+        floors: 1,
+        unitsPerFloor: 1,
+        towerNames: [singleUnitName.trim()],
+      });
+      // The API will create "Flat 101 Tower <name>", so let's use a direct unit creation approach
+      // Actually, let's just use the updateUnitName after creation or create a simpler approach
+      // For now, we use the bulk generator with 1 unit and then rename it
+      const unitsRes = await api.get(`/cmt/properties/${propertyId}/units`);
+      const allPropertyUnits = unitsRes.data;
+      const lastUnit = allPropertyUnits[allPropertyUnits.length - 1];
+      if (lastUnit) {
+        await api.patch(`/cmt/properties/${propertyId}/units/${lastUnit.id}`, {
+          name: singleUnitName.trim(),
+        });
+      }
+      setSingleUnitName('');
+      setSingleUnitFloor('');
+      setSelectedProperty('');
+      setAddUnitsMode('none');
+      await fetchProperties();
+    } catch (err) {
+      console.error('Failed to add unit', err);
+      alert('Failed to add unit');
+    } finally {
+      setAddingSingleUnit(false);
     }
   };
 
@@ -344,13 +387,31 @@ export default function CMTPropertiesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Properties & Units</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowBulkGenerate(!showBulkGenerate)}
-            className="btn-primary"
-          >
-            {showBulkGenerate ? 'Cancel' : '⚡ Generate Units'}
-          </button>
+        <div className="flex gap-2 relative">
+          <div className="relative">
+            <button
+              onClick={() => setAddUnitsMode(addUnitsMode === 'none' ? 'choose' : 'none')}
+              className="btn-primary"
+            >
+              {addUnitsMode !== 'none' ? 'Cancel' : '+ Add Units'}
+            </button>
+            {addUnitsMode === 'choose' && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                <button
+                  onClick={() => setAddUnitsMode('single')}
+                  className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-t-lg border-b border-gray-100"
+                >
+                  Add One Unit
+                </button>
+                <button
+                  onClick={() => { setAddUnitsMode('bulk'); setBulkStep('type'); }}
+                  className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-b-lg"
+                >
+                  Add Bulk
+                </button>
+              </div>
+            )}
+          </div>
           {userRole === 'SUPER_ADMIN' && (
             <button
               onClick={() => setShowCreateForm(!showCreateForm)}
@@ -362,10 +423,10 @@ export default function CMTPropertiesPage() {
         </div>
       </div>
 
-      {showBulkGenerate && (
+      {addUnitsMode === 'single' && (
         <div className="card border-l-4 border-l-brand-blue">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Bulk Generate Units</h2>
-          <form onSubmit={handleGenerateUnits} className="space-y-4">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Add One Unit</h2>
+          <form onSubmit={handleAddSingleUnit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Select Property</label>
               <select
@@ -382,66 +443,254 @@ export default function CMTPropertiesPage() {
                 ))}
               </select>
             </div>
-
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Number of Towers (X)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Unit Name</label>
                 <input
-                  type="number"
-                  min="1"
-                  value={generatorValues.towers}
-                  onChange={(e) =>
-                    setGeneratorValues({ ...generatorValues, towers: parseInt(e.target.value) || 1 })
-                  }
+                  type="text"
+                  value={singleUnitName}
+                  onChange={(e) => setSingleUnitName(e.target.value)}
                   className="input-field"
+                  placeholder="e.g., Flat 101 Tower A"
+                  required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Floors per Tower (Y)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Floor (optional)</label>
                 <input
                   type="number"
                   min="1"
-                  value={generatorValues.floors}
-                  onChange={(e) =>
-                    setGeneratorValues({ ...generatorValues, floors: parseInt(e.target.value) || 1 })
-                  }
+                  value={singleUnitFloor}
+                  onChange={(e) => setSingleUnitFloor(e.target.value)}
                   className="input-field"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Units per Floor (Z)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={generatorValues.unitsPerFloor}
-                  onChange={(e) =>
-                    setGeneratorValues({ ...generatorValues, unitsPerFloor: parseInt(e.target.value) || 1 })
-                  }
-                  className="input-field"
+                  placeholder="e.g., 1"
                 />
               </div>
             </div>
-
-            <div className="bg-blue-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600">
-                <strong>Total units to generate:</strong> {totalUnitsToGenerate.toLocaleString()}
-              </p>
+            <div className="flex gap-2">
+              <button type="submit" disabled={addingSingleUnit} className="btn-primary">
+                {addingSingleUnit ? 'Adding...' : 'Add Unit'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAddUnitsMode('none'); setSingleUnitName(''); setSingleUnitFloor(''); setSelectedProperty(''); }}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
             </div>
-
-            <button
-              type="submit"
-              disabled={generating}
-              className="btn-primary w-full"
-            >
-              {generating ? 'Generating...' : 'Generate Units'}
-            </button>
           </form>
+        </div>
+      )}
+
+      {addUnitsMode === 'bulk' && (
+        <div className="card border-l-4 border-l-brand-blue">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Add Bulk Units</h2>
+
+          {/* Step indicators */}
+          <div className="flex items-center gap-2 mb-6">
+            {['type', 'config', 'confirm'].map((step, i) => (
+              <div key={step} className="flex items-center gap-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                  bulkStep === step ? 'bg-brand-blue text-white' :
+                  ['type', 'config', 'confirm'].indexOf(bulkStep) > i ? 'bg-green-500 text-white' :
+                  'bg-gray-200 text-gray-500'
+                }`}>
+                  {['type', 'config', 'confirm'].indexOf(bulkStep) > i ? '✓' : i + 1}
+                </div>
+                <span className={`text-sm font-medium ${bulkStep === step ? 'text-gray-900' : 'text-gray-400'}`}>
+                  {step === 'type' ? 'Type' : step === 'config' ? 'Configuration' : 'Confirm'}
+                </span>
+                {i < 2 && <div className="w-8 h-px bg-gray-300" />}
+              </div>
+            ))}
+          </div>
+
+          {/* Step 1: Select Property & Type */}
+          {bulkStep === 'type' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Select Property</label>
+                <select
+                  value={selectedProperty}
+                  onChange={(e) => setSelectedProperty(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">Choose a property...</option>
+                  {properties.map((prop) => (
+                    <option key={prop.id} value={prop.id}>
+                      {prop.name} ({prop.units.length} units)
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">Property Type</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setBulkType('tower')}
+                    className={`p-4 rounded-lg border-2 text-center transition-colors ${
+                      bulkType === 'tower'
+                        ? 'border-brand-blue bg-blue-50 text-brand-blue'
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="text-2xl mb-2">🏢</div>
+                    <div className="font-semibold">Towers</div>
+                    <div className="text-xs mt-1">Towers &gt; Floors &gt; Flats</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBulkType('villa')}
+                    className={`p-4 rounded-lg border-2 text-center transition-colors ${
+                      bulkType === 'villa'
+                        ? 'border-brand-blue bg-blue-50 text-brand-blue'
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="text-2xl mb-2">🏡</div>
+                    <div className="font-semibold">Villas</div>
+                    <div className="text-xs mt-1">Areas &gt; Blocks &gt; Villas</div>
+                  </button>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setAddUnitsMode('none'); setSelectedProperty(''); }}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkStep('config')}
+                  disabled={!selectedProperty}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Configuration */}
+          {bulkStep === 'config' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {bulkType === 'tower' ? 'Number of Towers' : 'Number of Areas'}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={generatorValues.towers}
+                    onChange={(e) =>
+                      setGeneratorValues({ ...generatorValues, towers: parseInt(e.target.value) || 1 })
+                    }
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {bulkType === 'tower' ? 'Floors per Tower' : 'Blocks per Area'}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={generatorValues.floors}
+                    onChange={(e) =>
+                      setGeneratorValues({ ...generatorValues, floors: parseInt(e.target.value) || 1 })
+                    }
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {bulkType === 'tower' ? 'Flats per Floor' : 'Villas per Block'}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={generatorValues.unitsPerFloor}
+                    onChange={(e) =>
+                      setGeneratorValues({ ...generatorValues, unitsPerFloor: parseInt(e.target.value) || 1 })
+                    }
+                    className="input-field"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBulkStep('type')}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkStep('confirm')}
+                  className="btn-primary"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Confirmation */}
+          {bulkStep === 'confirm' && (
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg space-y-2">
+                <h3 className="font-semibold text-gray-900">Review before generating</h3>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                  <span className="text-gray-500">Property:</span>
+                  <span className="text-gray-900 font-medium">
+                    {properties.find(p => p.id === selectedProperty)?.name || '-'}
+                  </span>
+                  <span className="text-gray-500">Type:</span>
+                  <span className="text-gray-900 font-medium">{bulkType === 'tower' ? 'Towers' : 'Villas'}</span>
+                  <span className="text-gray-500">{bulkType === 'tower' ? 'Towers:' : 'Areas:'}</span>
+                  <span className="text-gray-900 font-medium">{generatorValues.towers}</span>
+                  <span className="text-gray-500">{bulkType === 'tower' ? 'Floors per Tower:' : 'Blocks per Area:'}</span>
+                  <span className="text-gray-900 font-medium">{generatorValues.floors}</span>
+                  <span className="text-gray-500">{bulkType === 'tower' ? 'Flats per Floor:' : 'Villas per Block:'}</span>
+                  <span className="text-gray-900 font-medium">{generatorValues.unitsPerFloor}</span>
+                </div>
+                <div className="border-t border-blue-200 pt-2 mt-2">
+                  <span className="text-gray-700 font-bold">
+                    Total units to generate: {totalUnitsToGenerate.toLocaleString()}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {bulkType === 'tower'
+                    ? `Naming format: Flat [floor][unit] Tower [A-${String.fromCharCode(64 + generatorValues.towers)}]`
+                    : `Naming format: Villa [block][unit] Area [A-${String.fromCharCode(64 + generatorValues.towers)}]`
+                  }
+                </div>
+              </div>
+              <div className="flex justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBulkStep('config')}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGenerateUnits}
+                  disabled={generating}
+                  className="btn-primary"
+                >
+                  {generating ? 'Generating...' : 'Confirm & Generate'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
