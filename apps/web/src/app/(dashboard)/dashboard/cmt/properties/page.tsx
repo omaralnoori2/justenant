@@ -579,7 +579,7 @@ export default function CMTPropertiesPage() {
                 <button
                   type="button"
                   onClick={() => setBulkStep('config')}
-                  disabled={!selectedProperty && properties.length !== 1}
+                  disabled={properties.length === 0}
                   className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
